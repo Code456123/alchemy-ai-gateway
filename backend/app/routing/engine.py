@@ -13,12 +13,12 @@ from backend.app.constants.models import MODEL_COSTS, MODEL_FALLBACK_CHAIN, Mode
 from backend.app.constants.thresholds import (
     SCORE_BAND_LOW,
     SCORE_BAND_MID,
+    SCORE_CONTEXT_TOKEN_THRESHOLD,
     SCORE_WEIGHT_BUDGET,
     SCORE_WEIGHT_CAPABILITY,
     SCORE_WEIGHT_COMPLEXITY,
     SCORE_WEIGHT_CONTEXT,
     SCORE_WEIGHT_ECONOMIC,
-    SCORE_CONTEXT_TOKEN_THRESHOLD,
 )
 from backend.app.models.analysis import (
     FastDetectorResult,
@@ -130,7 +130,9 @@ class RoutingEngine:
 
         economic_penalty = -SCORE_WEIGHT_ECONOMIC if economic_mode else 0.0
 
-        total = complexity_score + capability_score + budget_score + context_score + economic_penalty
+        total = (
+            complexity_score + capability_score + budget_score + context_score + economic_penalty
+        )
         total = round(max(0.0, min(100.0, total)), 2)
 
         hard_gate = None

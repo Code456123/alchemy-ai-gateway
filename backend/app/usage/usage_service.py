@@ -19,7 +19,9 @@ class UsageService:
         """Store usage in session."""
         self.requests.append(usage)
         self.total_tokens += usage.total_tokens()
-        logger.debug("Usage stored: {} requests, {} total tokens", len(self.requests), self.total_tokens)
+        logger.debug(
+            "Usage stored: {} requests, {} total tokens", len(self.requests), self.total_tokens
+        )
 
     def update_total_cost(self, cost: float) -> None:
         """Update total cost (called after pricing calculation)."""

@@ -66,7 +66,11 @@ def test_high_complexity_routes_to_groq_70b(
     engine: RoutingEngine, clear: SecurityResult, healthy_budget: BudgetSnapshot
 ) -> None:
     analysis = PromptAnalysis(
-        task_type=TaskType.REASONING, complexity=0.9, needs_reasoning=True, needs_coding=True, reason="x"
+        task_type=TaskType.REASONING,
+        complexity=0.9,
+        needs_reasoning=True,
+        needs_coding=True,
+        reason="x",
     )
     decision = engine.decide(security=clear, analysis=analysis, budget=healthy_budget)
     assert decision.model is ModelID.GROQ_LLAMA2_70B
@@ -121,7 +125,11 @@ def test_score_breakdown_explain(
     engine: RoutingEngine, clear: SecurityResult, healthy_budget: BudgetSnapshot
 ) -> None:
     analysis = PromptAnalysis(
-        task_type=TaskType.CODING, complexity=0.7, needs_coding=True, needs_reasoning=True, reason="x"
+        task_type=TaskType.CODING,
+        complexity=0.7,
+        needs_coding=True,
+        needs_reasoning=True,
+        reason="x",
     )
     decision = engine.decide(security=clear, analysis=analysis, budget=healthy_budget)
     assert decision.score_breakdown is not None
@@ -136,17 +144,29 @@ def test_economic_mode_applies_penalty(
     analysis = PromptAnalysis(
         task_type=TaskType.CODING, complexity=0.5, needs_coding=True, reason="x"
     )
-    normal = engine.decide(security=clear, analysis=analysis, budget=healthy_budget, economic_mode=False)
-    economic = engine.decide(security=clear, analysis=analysis, budget=healthy_budget, economic_mode=True)
+    normal = engine.decide(
+        security=clear, analysis=analysis, budget=healthy_budget, economic_mode=False
+    )
+    economic = engine.decide(
+        security=clear, analysis=analysis, budget=healthy_budget, economic_mode=True
+    )
     assert economic.score_breakdown is not None
     assert economic.score_breakdown.economic_penalty == -5.0
     assert economic.score_breakdown.total_score < normal.score_breakdown.total_score
 
 
-def test_groq_model_aliases(engine: RoutingEngine, clear: SecurityResult, healthy_budget: BudgetSnapshot) -> None:
+def test_groq_model_aliases(
+    engine: RoutingEngine, clear: SecurityResult, healthy_budget: BudgetSnapshot
+) -> None:
     analysis = PromptAnalysis(task_type=TaskType.GENERAL, complexity=0.1, reason="x")
-    for alias, expected in [("mixtral", ModelID.GROQ_MIXTRAL), ("groq_70b", ModelID.GROQ_LLAMA2_70B), ("groq_13b", ModelID.GROQ_LLAMA2_13B)]:
-        decision = engine.decide(security=clear, analysis=analysis, budget=healthy_budget, model_override=alias)
+    for alias, expected in [
+        ("mixtral", ModelID.GROQ_MIXTRAL),
+        ("groq_70b", ModelID.GROQ_LLAMA2_70B),
+        ("groq_13b", ModelID.GROQ_LLAMA2_13B),
+    ]:
+        decision = engine.decide(
+            security=clear, analysis=analysis, budget=healthy_budget, model_override=alias
+        )
         assert decision.model is expected, f"alias '{alias}' should map to {expected}"
 
 

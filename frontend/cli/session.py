@@ -165,7 +165,9 @@ class InteractiveSession:
                     self._current_model_override = model_arg
                     self._console.print(f"[green]✓ Model override set to {model_arg}[/green]")
                 else:
-                    self._console.print(f"[red]✗ Unknown model: {model_arg}. Try :model for list.[/red]")
+                    self._console.print(
+                        f"[red]✗ Unknown model: {model_arg}. Try :model for list.[/red]"
+                    )
         else:
             self._console.print("[red]Usage: :model or :model <name> or :model auto[/red]")
 
@@ -240,9 +242,7 @@ class InteractiveSession:
                 if enable_eco.upper() == "Y":
                     self._budget_manager.enable_economic_mode()
                     self._console.print("[green]Economic Mode Enabled[/green]\n")
-            elif budget_warning.level == "critical":
-                self._console.print(f"\n[red bold]{budget_warning.message}[/red bold]\n")
-            elif budget_warning.level == "exhausted":
+            elif budget_warning.level == "critical" or budget_warning.level == "exhausted":
                 self._console.print(f"\n[red bold]{budget_warning.message}[/red bold]\n")
 
         self._dashboard.render(response, self._budget_snapshot())

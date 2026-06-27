@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+
 from loguru import logger
 
 
@@ -45,12 +46,12 @@ class BudgetManager:
         """
         self.last_request_cost = cost_usd
         self.used_budget_usd = round(self.used_budget_usd + cost_usd, 6)
-        self.remaining_budget_usd = round(
-            self.total_budget_usd - self.used_budget_usd, 6
+        self.remaining_budget_usd = round(self.total_budget_usd - self.used_budget_usd, 6)
+        self.percentage_used = (
+            round((self.used_budget_usd / self.total_budget_usd) * 100, 2)
+            if self.total_budget_usd > 0
+            else 0.0
         )
-        self.percentage_used = round(
-            (self.used_budget_usd / self.total_budget_usd) * 100, 2
-        ) if self.total_budget_usd > 0 else 0.0
 
         logger.debug(
             "Budget updated: used=${:.6f}, remaining=${:.6f}, pct={}%",

@@ -46,7 +46,12 @@ class OpenAIAdapter:
         if normalized in self.pricing:
             pricing = self.pricing[normalized].copy()
             pricing["source"] = "cache"
-            logger.debug("OpenAI pricing for {}: ${:.6f} in, ${:.6f} out", model_name, pricing["input_price"], pricing["output_price"])
+            logger.debug(
+                "OpenAI pricing for {}: ${:.6f} in, ${:.6f} out",
+                model_name,
+                pricing["input_price"],
+                pricing["output_price"],
+            )
             return pricing
 
         logger.warning("Unknown OpenAI model: {}", model_name)

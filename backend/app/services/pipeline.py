@@ -2,11 +2,9 @@
 
 Coordinates the end-to-end request flow:
 
-    fast detector → security → task analyzer → routing → (mock) response
+    fast detector → security → cache lookup → task analyzer → routing → response
 
-Each stage communicates exclusively through the shared models. Stages that are
-out of scope for the first working version (cache, real models, budget
-tracking) are either skipped or supplied with static stand-ins.
+Each stage communicates exclusively through the shared models.
 """
 
 from __future__ import annotations
@@ -28,6 +26,7 @@ from backend.app.models.budget import BudgetSnapshot
 from backend.app.models.request import PromptRequest
 from backend.app.models.response import PromptResponse
 from backend.app.models.routing import RoutingDecision
+from backend.app.modules.cache import SemanticCache
 from backend.app.modules.fast_detector import FastRequestDetector
 from backend.app.modules.task_analyzer import TaskAnalyzer
 from backend.app.routing import RoutingEngine
@@ -58,6 +57,7 @@ class AlchemyPipeline:
         task_analyzer: TaskAnalyzer | None = None,
         router: RoutingEngine | None = None,
         responder: MockResponseEngine | None = None,
+        cache: SemanticCache | None = None,
     ) -> None:
         self._settings = settings or get_settings()
         self._fast_detector = fast_detector or FastRequestDetector()
@@ -67,6 +67,7 @@ class AlchemyPipeline:
         self._task_analyzer = task_analyzer or TaskAnalyzer()
         self._router = router or RoutingEngine()
         self._responder = responder or MockResponseEngine()
+        self._cache = cache or SemanticCache(settings=self._settings)
 
     def _budget_snapshot(self) -> BudgetSnapshot:
         """Build a static budget snapshot from settings.
@@ -131,10 +132,34 @@ class AlchemyPipeline:
                 model=routing.model,
             )
 
-        # ── Stage 3: Task analyzer ──
+        # ── Stage 3: Semantic cache lookup ──
+        cache_decision = self._cache.lookup(request.prompt)
+        if cache_decision.is_hit and cache_decision.entry is not None:
+            routing = RoutingDecision(
+                action=RoutingAction.CACHE_RETURN,
+                model=cache_decision.entry.model_used,
+                reason=(
+                    f"Cache HIT ({cache_decision.verification.explain()})"
+                    if cache_decision.verification
+                    else "Cache HIT"
+                ),
+            )
+            return self._finalize(
+                request,
+                text=cache_decision.entry.response_text,
+                start=start,
+                cached=True,
+                security=security,
+                fast=fast,
+                routing=routing,
+                model=cache_decision.entry.model_used,
+                cost_usd=0.0,
+            )
+
+        # ── Stage 4: Task analyzer ──
         analysis = self._task_analyzer.analyze(request)
 
-        # ── Stage 4: Routing ──
+        # ── Stage 5: Routing ──
         routing = self._router.decide(
             security=security,
             analysis=analysis,
@@ -145,9 +170,19 @@ class AlchemyPipeline:
             economic_mode=False,
         )
 
-        # ── Stage 5: Response generation (mock) ──
+        # ── Stage 6: Response generation (mock) ──
         if routing.action is RoutingAction.MODEL_CALL and routing.model is not None:
             result = self._responder.generate(request, routing.model, analysis)
+
+            # Store in cache for future lookups.
+            self._cache.store(
+                query=request.prompt,
+                response_text=result.text,
+                model_used=routing.model,
+                cost_usd=result.cost_usd,
+                latency_ms=result.latency_ms,
+            )
+
             return self._finalize(
                 request,
                 text=result.text,

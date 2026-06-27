@@ -80,12 +80,17 @@ def _budget_panel(budget: BudgetSnapshot, response: PromptResponse | None = None
         rows.append(("Request Cost", Text(f"${response.cost_usd:.6f}", style="yellow")))
         rows.append(("", ""))
 
-    rows.extend([
-        ("State", Text(budget.state.value, style=f"bold {style}")),
-        ("Spent", Text(f"${budget.spent_usd:.6f} / ${budget.daily_limit_usd:.2f}", style="yellow")),
-        ("Used", f"{pct:.2f}%"),
-        ("Remaining", Text(f"${budget.remaining_usd:.6f}", style="yellow")),
-    ])
+    rows.extend(
+        [
+            ("State", Text(budget.state.value, style=f"bold {style}")),
+            (
+                "Spent",
+                Text(f"${budget.spent_usd:.6f} / ${budget.daily_limit_usd:.2f}", style="yellow"),
+            ),
+            ("Used", f"{pct:.2f}%"),
+            ("Remaining", Text(f"${budget.remaining_usd:.6f}", style="yellow")),
+        ]
+    )
     return Panel(_kv_table(rows), title="[bold]Budget[/bold]", border_style=style, padding=(1, 2))
 
 

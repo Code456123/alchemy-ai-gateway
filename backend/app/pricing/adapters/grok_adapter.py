@@ -32,7 +32,12 @@ class GrokAdapter:
             if key in normalized:
                 pricing = self.pricing[key].copy()
                 pricing["source"] = "cache"
-                logger.debug("Grok pricing for {}: ${:.6f} in, ${:.6f} out", model_name, pricing["input_price"], pricing["output_price"])
+                logger.debug(
+                    "Grok pricing for {}: ${:.6f} in, ${:.6f} out",
+                    model_name,
+                    pricing["input_price"],
+                    pricing["output_price"],
+                )
                 return pricing
 
         logger.warning("Unknown Grok model: {}", model_name)
