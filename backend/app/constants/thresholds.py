@@ -28,3 +28,15 @@ LONG_CONTEXT_COMPLEXITY_THRESHOLD: float = 0.5
 
 # ── Context Manager ─────────────────────────
 CHUNK_SIZE_TOKENS: int = 200
+
+# ── Decision Score Engine (Groq Multi-Model) ───────────
+SCORE_BAND_LOW: float = 30.0
+SCORE_BAND_MID: float = 65.0
+
+SCORE_WEIGHT_COMPLEXITY: float = 35.0
+SCORE_WEIGHT_CAPABILITY: float = 30.0
+SCORE_WEIGHT_BUDGET: float = 20.0
+SCORE_WEIGHT_CONTEXT: float = 10.0
+SCORE_WEIGHT_ECONOMIC: float = 5.0
+
+SCORE_CONTEXT_TOKEN_THRESHOLD: int = 500

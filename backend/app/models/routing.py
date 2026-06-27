@@ -6,6 +6,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from backend.app.constants.enums import RoutingAction
 from backend.app.constants.models import ModelID
+from backend.app.models.scoring import ScoreBreakdown
 
 
 class RoutingDecision(BaseModel):
@@ -25,3 +26,7 @@ class RoutingDecision(BaseModel):
     reason: str = Field(description="Human-readable justification for the decision.")
     estimated_cost_usd: float = Field(ge=0.0, default=0.0)
     fallback_chain: tuple[ModelID, ...] = Field(default_factory=tuple)
+    score_breakdown: ScoreBreakdown | None = Field(
+        default=None,
+        description="Decision score details when score engine was used.",
+    )

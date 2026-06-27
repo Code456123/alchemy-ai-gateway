@@ -142,6 +142,7 @@ class AlchemyPipeline:
             fast_detector=fast,
             prompt_tokens=prompt_tokens,
             model_override=request.model_override,
+            economic_mode=False,
         )
 
         # ── Stage 5: Response generation (mock) ──

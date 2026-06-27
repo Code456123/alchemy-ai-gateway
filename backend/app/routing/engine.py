@@ -1,8 +1,7 @@
-"""Rule-based routing engine.
+"""Rule-based routing engine with weighted decision score.
 
-Combines the security verdict, fast-detector result, task analysis, and budget
-state into an explainable :class:`RoutingDecision`. It selects a model and a
-fallback chain but never calls a model itself.
+Combines security, fast-detector, task analysis, and budget state into
+an explainable routing decision with transparent scoring.
 """
 
 from __future__ import annotations
@@ -12,8 +11,14 @@ from loguru import logger
 from backend.app.constants.enums import BudgetState, RoutingAction
 from backend.app.constants.models import MODEL_COSTS, MODEL_FALLBACK_CHAIN, ModelID
 from backend.app.constants.thresholds import (
-    COMPLEXITY_HIGH_THRESHOLD,
-    COMPLEXITY_LOW_THRESHOLD,
+    SCORE_BAND_LOW,
+    SCORE_BAND_MID,
+    SCORE_WEIGHT_BUDGET,
+    SCORE_WEIGHT_CAPABILITY,
+    SCORE_WEIGHT_COMPLEXITY,
+    SCORE_WEIGHT_CONTEXT,
+    SCORE_WEIGHT_ECONOMIC,
+    SCORE_CONTEXT_TOKEN_THRESHOLD,
 )
 from backend.app.models.analysis import (
     FastDetectorResult,
@@ -22,13 +27,13 @@ from backend.app.models.analysis import (
 )
 from backend.app.models.budget import BudgetSnapshot
 from backend.app.models.routing import RoutingDecision
+from backend.app.models.scoring import ScoreBreakdown
 
-# Rough token estimate for cost projection in the absence of real tokenization.
 _ESTIMATED_COMPLETION_TOKENS = 256
 
 
 class RoutingEngine:
-    """Selects the most appropriate model for a request via deterministic rules."""
+    """Selects the most appropriate model via weighted decision score."""
 
     def decide(
         self,
@@ -41,22 +46,10 @@ class RoutingEngine:
         model_override: str | None = None,
         economic_mode: bool = False,
     ) -> RoutingDecision:
-        """Produce a routing decision from the upstream pipeline signals.
+        """Produce a routing decision from upstream pipeline signals.
 
-        Precedence: security block → explicit override → fast-path local →
-        budget-constrained selection → complexity/capability-based selection.
-
-        Args:
-            security: Output of the security scanner.
-            analysis: Output of the task analyzer (None on the fast path).
-            budget: Current budget snapshot.
-            fast_detector: Output of the fast detector, if it ran.
-            prompt_tokens: Estimated prompt token count for cost projection.
-            model_override: Optional caller-forced model id.
-            economic_mode: If True, prefer cheaper models.
-
-        Returns:
-            An explainable :class:`RoutingDecision`.
+        Precedence: security block → override → fast-path → budget-constrained →
+        decision score engine.
         """
         # 1. Security always wins.
         if security.is_blocked:
@@ -66,80 +59,123 @@ class RoutingEngine:
                 reason=f"Blocked by security: {security.reason}",
             )
 
-        # 2. Explicit override (validated against known models).
+        # 2. Explicit override.
         if model_override:
             model = self._coerce_model(model_override)
             if model is not None:
                 return self._model_call(model, prompt_tokens, f"Caller override → {model.value}")
             logger.warning("Unknown model_override '{}', ignoring", model_override)
 
-        # 3. Fast path → cheapest local model.
+        # 3. Fast path → cheapest Groq model.
         if fast_detector is not None and fast_detector.is_fast_path:
             return self._model_call(
-                ModelID.LOCAL_2B,
+                ModelID.GROQ_LLAMA2_13B,
                 prompt_tokens,
-                f"Fast path ({fast_detector.reason}) → local 2B",
+                f"Fast path ({fast_detector.reason}) → Groq LLaMA 2 13B",
             )
 
-        # 4. Budget exhausted → force local.
+        # 4. Budget exhausted → force cheapest.
         if budget.state is BudgetState.CRITICAL or budget.remaining_usd <= 0.0:
             return self._model_call(
-                ModelID.LOCAL_2B,
+                ModelID.GROQ_LLAMA2_13B,
                 prompt_tokens,
-                f"Budget {budget.state.value} → force local 2B",
+                f"Budget {budget.state.value} → force Groq LLaMA 2 13B",
             )
 
-        # 5. Capability/complexity-based selection.
-        model, reason = self._select_by_analysis(analysis, budget, economic_mode)
-        return self._model_call(model, prompt_tokens, reason)
-
-    def _select_by_analysis(
-        self, analysis: PromptAnalysis | None, budget: BudgetSnapshot, economic_mode: bool = False
-    ) -> tuple[ModelID, str]:
-        """Choose a model from task analysis and budget pressure.
-
-        If economic_mode=True, prefer cheaper models (local 2B > gpt-4o-mini > gpt-4o).
-        """
+        # 5. Decision score engine.
         if analysis is None:
-            return ModelID.GPT4O_MINI, "No analysis available → balanced mini"
-
-        # Vision is only supported by the flagship model.
-        if analysis.needs_vision and not economic_mode:
-            return ModelID.GPT4O, "Vision required → GPT-4o"
-
-        high = analysis.complexity >= COMPLEXITY_HIGH_THRESHOLD
-        low = analysis.complexity < COMPLEXITY_LOW_THRESHOLD
-        heavy_capability = (
-            analysis.needs_reasoning or analysis.needs_coding or analysis.needs_planning
-        )
-
-        # Under budget pressure (LOW), avoid the flagship model.
-        budget_pressured = budget.state is BudgetState.LOW
-
-        # Economic mode: prefer cheaper models
-        if economic_mode:
-            if not heavy_capability or low:
-                return ModelID.LOCAL_2B, (
-                    f"Economic mode + low/medium complexity ({analysis.complexity:.2f}) → local 2B"
-                )
-            return ModelID.GPT4O_MINI, (
-                f"Economic mode + heavy capability ({analysis.complexity:.2f}) → GPT-4o-mini"
+            return self._model_call(
+                ModelID.GROQ_MIXTRAL,
+                prompt_tokens,
+                "No analysis available → balanced Mixtral",
             )
 
-        if high and heavy_capability and not budget_pressured:
-            return ModelID.GPT4O, (
-                f"High complexity ({analysis.complexity:.2f}) + heavy capability → GPT-4o"
-            )
-        if low and not heavy_capability:
-            return ModelID.LOCAL_2B, (f"Low complexity ({analysis.complexity:.2f}) → local 2B")
-        return ModelID.GPT4O_MINI, (
-            f"Medium complexity ({analysis.complexity:.2f})"
-            + (" under budget pressure" if budget_pressured else "")
-            + " → GPT-4o-mini"
+        model, reason, breakdown = self._select_by_score(
+            analysis, budget, prompt_tokens, economic_mode
+        )
+        return self._model_call(model, prompt_tokens, reason, score_breakdown=breakdown)
+
+    def _compute_score(
+        self,
+        analysis: PromptAnalysis,
+        budget: BudgetSnapshot,
+        prompt_tokens: int,
+        economic_mode: bool,
+    ) -> ScoreBreakdown:
+        complexity_score = round(analysis.complexity * SCORE_WEIGHT_COMPLEXITY, 2)
+
+        capability_score = 0.0
+        if analysis.needs_coding:
+            capability_score += 10.0
+        if analysis.needs_reasoning:
+            capability_score += 10.0
+        if analysis.needs_planning:
+            capability_score += 5.0
+        if analysis.needs_vision:
+            capability_score += 5.0
+        capability_score = min(capability_score, SCORE_WEIGHT_CAPABILITY)
+
+        budget_score = {
+            BudgetState.HEALTHY: SCORE_WEIGHT_BUDGET,
+            BudgetState.LOW: SCORE_WEIGHT_BUDGET / 2,
+            BudgetState.CRITICAL: 0.0,
+        }.get(budget.state, SCORE_WEIGHT_BUDGET)
+
+        context_score = 0.0
+        if analysis.needs_context:
+            context_score += 5.0
+        if prompt_tokens > SCORE_CONTEXT_TOKEN_THRESHOLD:
+            context_score += 5.0
+        context_score = min(context_score, SCORE_WEIGHT_CONTEXT)
+
+        economic_penalty = -SCORE_WEIGHT_ECONOMIC if economic_mode else 0.0
+
+        total = complexity_score + capability_score + budget_score + context_score + economic_penalty
+        total = round(max(0.0, min(100.0, total)), 2)
+
+        hard_gate = None
+        if analysis.needs_vision and budget.state is not BudgetState.CRITICAL:
+            hard_gate = "vision_unsupported"
+
+        return ScoreBreakdown(
+            complexity_score=complexity_score,
+            capability_score=capability_score,
+            budget_score=budget_score,
+            context_score=context_score,
+            economic_penalty=economic_penalty,
+            total_score=total,
+            hard_gate=hard_gate,
         )
 
-    def _model_call(self, model: ModelID, prompt_tokens: int, reason: str) -> RoutingDecision:
-        """Build a MODEL_CALL decision with cost estimate and fallback chain."""
+    def _select_by_score(
+        self,
+        analysis: PromptAnalysis,
+        budget: BudgetSnapshot,
+        prompt_tokens: int,
+        economic_mode: bool,
+    ) -> tuple[ModelID, str, ScoreBreakdown]:
+        breakdown = self._compute_score(analysis, budget, prompt_tokens, economic_mode)
+
+        if breakdown.hard_gate == "vision_unsupported":
+            logger.warning("Vision required but Groq doesn't support it, using Mixtral")
+            return ModelID.GROQ_MIXTRAL, breakdown.explain(), breakdown
+
+        if breakdown.total_score <= SCORE_BAND_LOW:
+            model = ModelID.GROQ_LLAMA2_13B
+        elif breakdown.total_score <= SCORE_BAND_MID:
+            model = ModelID.GROQ_MIXTRAL
+        else:
+            model = ModelID.GROQ_LLAMA2_70B
+
+        return model, breakdown.explain(), breakdown
+
+    def _model_call(
+        self,
+        model: ModelID,
+        prompt_tokens: int,
+        reason: str,
+        score_breakdown: ScoreBreakdown | None = None,
+    ) -> RoutingDecision:
         cost = self._estimate_cost(model, prompt_tokens)
         chain = tuple(ModelID(m) for m in MODEL_FALLBACK_CHAIN.get(model, []))
         logger.debug("Routing → {} (${:.5f}) :: {}", model.value, cost, reason)
@@ -149,11 +185,11 @@ class RoutingEngine:
             reason=reason,
             estimated_cost_usd=cost,
             fallback_chain=chain,
+            score_breakdown=score_breakdown,
         )
 
     @staticmethod
     def _estimate_cost(model: ModelID, prompt_tokens: int) -> float:
-        """Estimate USD cost for a call using static per-1K-token pricing."""
         costs = MODEL_COSTS.get(model, {"input": 0.0, "output": 0.0})
         prompt_cost = (prompt_tokens / 1000.0) * costs["input"]
         completion_cost = (_ESTIMATED_COMPLETION_TOKENS / 1000.0) * costs["output"]
@@ -161,9 +197,14 @@ class RoutingEngine:
 
     @staticmethod
     def _coerce_model(value: str) -> ModelID | None:
-        """Map a friendly override alias to a ModelID, or None if unknown."""
         aliases = {
-            "local": ModelID.LOCAL_2B,
+            "groq_13b": ModelID.GROQ_LLAMA2_13B,
+            "groq_mixtral": ModelID.GROQ_MIXTRAL,
+            "groq_70b": ModelID.GROQ_LLAMA2_70B,
+            "mixtral": ModelID.GROQ_MIXTRAL,
+            "llama2_13b": ModelID.GROQ_LLAMA2_13B,
+            "llama2_70b": ModelID.GROQ_LLAMA2_70B,
+            "local": ModelID.GROQ_LLAMA2_13B,
             "local_2b": ModelID.LOCAL_2B,
             "mini": ModelID.GPT4O_MINI,
             "gpt4o_mini": ModelID.GPT4O_MINI,
