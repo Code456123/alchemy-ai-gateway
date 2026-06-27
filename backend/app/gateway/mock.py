@@ -78,6 +78,7 @@ class MockResponseEngine:
         request: PromptRequest,
         model: ModelID,
         analysis: PromptAnalysis | None = None,
+        context_text: str = "",
     ) -> MockResult:
         """Generate a mock response for a request on a given model.
 
@@ -85,6 +86,8 @@ class MockResponseEngine:
             request: The original prompt request.
             model: The model selected by the routing engine.
             analysis: Optional task analysis used to tailor the mock text.
+            context_text: Ignored by the mock engine (accepted for interface
+                parity with OtariGateway).
 
         Returns:
             A :class:`MockResult` with text, latency, cost, and token usage.

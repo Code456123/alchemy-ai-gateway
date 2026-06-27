@@ -18,6 +18,7 @@ from backend.app.constants.enums import RoutingAction
 from backend.app.constants.models import ModelID
 from backend.app.context import ContextManager
 from backend.app.gateway.mock import MockResponseEngine
+from backend.app.gateway.otari_client import create_gateway
 from backend.app.models.budget import BudgetSnapshot
 from backend.app.models.request import PromptRequest
 from backend.app.models.response import PromptResponse
@@ -91,7 +92,7 @@ class PipelineOrchestrator:
         )
         self._task_analyzer = task_analyzer or TaskAnalyzer()
         self._router = router or RoutingEngine()
-        self._responder = responder or MockResponseEngine()
+        self._responder = responder or create_gateway(self._settings)
         self._cache = cache or SemanticCache(settings=self._settings)
         self._budget_manager = budget_manager or BudgetManager(
             self._settings.budget_daily_limit_usd
@@ -138,9 +139,7 @@ class PipelineOrchestrator:
     def resume(self, request_id: str, request: PromptRequest) -> PromptResponse:
         context = self._checkpoint_manager.load_checkpoint(request_id)
         if context is None:
-            logger.warning(
-                "No checkpoint found for request_id={}, starting fresh", request_id
-            )
+            logger.warning("No checkpoint found for request_id={}, starting fresh", request_id)
             return self.process(request)
 
         logger.info(
@@ -150,9 +149,7 @@ class PipelineOrchestrator:
         )
         return self._execute_pipeline(context, request)
 
-    def _execute_pipeline(
-        self, context: PipelineContext, request: PromptRequest
-    ) -> PromptResponse:
+    def _execute_pipeline(self, context: PipelineContext, request: PromptRequest) -> PromptResponse:
         context.status = PipelineStatus.RUNNING
 
         completed = set(context.execution_trace.completed_stages)
@@ -164,9 +161,7 @@ class PipelineOrchestrator:
                     self._executor.skip(stage_name, context)
                     continue
 
-                self._executor.execute(
-                    stage_name, self._stage_handlers[stage_name], context
-                )
+                self._executor.execute(stage_name, self._stage_handlers[stage_name], context)
 
                 terminal_event = self._check_terminal(stage_name, context)
                 if terminal_event is not None:
@@ -277,17 +272,9 @@ class PipelineOrchestrator:
         for stage in self.STAGE_ORDER[idx + 1 :]:
             if stage not in recorded:
                 # Fast-path terminal: still run security before skipping the rest
-                if (
-                    event == PipelineEvent.FAST_RESPONSE
-                    and stage == StageName.SECURITY
-                ):
-                    self._executor.execute(
-                        stage, self._stage_handlers[stage], context
-                    )
-                    if (
-                        context.security_result is not None
-                        and context.security_result.is_blocked
-                    ):
+                if event == PipelineEvent.FAST_RESPONSE and stage == StageName.SECURITY:
+                    self._executor.execute(stage, self._stage_handlers[stage], context)
+                    if context.security_result is not None and context.security_result.is_blocked:
                         event = PipelineEvent.SECURITY_BLOCKED
                         break
                     continue
@@ -306,9 +293,7 @@ class PipelineOrchestrator:
             )
             context.mark_terminated_early("fast_response")
         elif event == PipelineEvent.SECURITY_BLOCKED:
-            reason = (
-                context.security_result.reason if context.security_result else "blocked"
-            )
+            reason = context.security_result.reason if context.security_result else "blocked"
             context.response_text = f"⛔ Request blocked: {reason}"
             self._run_decision_engine(context)
             context.mark_terminated_early("security_blocked")
@@ -365,9 +350,7 @@ class PipelineOrchestrator:
             context.response_cost_usd = 0.0
         else:
             context.cache_hit = False
-            self._dispatcher.emit(
-                PipelineEvent.CACHE_MISS, {"request_id": context.request_id}
-            )
+            self._dispatcher.emit(PipelineEvent.CACHE_MISS, {"request_id": context.request_id})
 
     def _run_context_manager(self, context: PipelineContext) -> None:
         budget = self._build_budget_snapshot()
@@ -399,8 +382,14 @@ class PipelineOrchestrator:
             return
 
         request = self._build_request(context)
+        context_text = ""
+        if context.context_result is not None:
+            context_text = context.context_result.context_text or ""
         result = self._responder.generate(
-            request, context.routing_decision.model, context.analysis_result
+            request,
+            context.routing_decision.model,
+            context.analysis_result,
+            context_text=context_text,
         )
         context.response_text = result.text
         context.response_model = context.routing_decision.model
@@ -453,12 +442,8 @@ class PipelineOrchestrator:
             critical_threshold=self._settings.budget_critical_threshold,
         )
 
-    def _build_response(
-        self, context: PipelineContext, request: PromptRequest
-    ) -> PromptResponse:
-        blocked = (
-            context.security_result is not None and context.security_result.is_blocked
-        )
+    def _build_response(self, context: PipelineContext, request: PromptRequest) -> PromptResponse:
+        blocked = context.security_result is not None and context.security_result.is_blocked
         cached = context.cache_hit is True
 
         return PromptResponse(
