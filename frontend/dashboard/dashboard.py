@@ -67,16 +67,25 @@ def _routing_panel(response: PromptResponse) -> Panel:
     return Panel(_kv_table(rows), title="[bold]Routing[/bold]", border_style="cyan", padding=(1, 2))
 
 
-def _budget_panel(budget: BudgetSnapshot) -> Panel:
-    """Panel summarizing the budget snapshot."""
+def _budget_panel(budget: BudgetSnapshot, response: PromptResponse | None = None) -> Panel:
+    """Panel summarizing the budget snapshot with request cost details."""
     style = _BUDGET_STYLES.get(budget.state, "white")
     pct = budget.fraction_used * 100.0
-    rows: list[tuple[str, Text | str]] = [
+    rows: list[tuple[str, Text | str]] = []
+
+    if response is not None and response.model is not None:
+        rows.append(("Model", Text(response.model.value, style="bold white")))
+        rows.append(("Prompt Tokens", str(response.prompt_tokens)))
+        rows.append(("Completion Tokens", str(response.completion_tokens)))
+        rows.append(("Request Cost", Text(f"${response.cost_usd:.6f}", style="yellow")))
+        rows.append(("", ""))
+
+    rows.extend([
         ("State", Text(budget.state.value, style=f"bold {style}")),
-        ("Spent", f"${budget.spent_usd:.4f} / ${budget.daily_limit_usd:.2f}"),
-        ("Used", f"{pct:.1f}%"),
-        ("Remaining", f"${budget.remaining_usd:.4f}"),
-    ]
+        ("Spent", Text(f"${budget.spent_usd:.6f} / ${budget.daily_limit_usd:.2f}", style="yellow")),
+        ("Used", f"{pct:.2f}%"),
+        ("Remaining", Text(f"${budget.remaining_usd:.6f}", style="yellow")),
+    ])
     return Panel(_kv_table(rows), title="[bold]Budget[/bold]", border_style=style, padding=(1, 2))
 
 
@@ -133,7 +142,7 @@ class Dashboard:
         group = Group(
             _routing_panel(response),
             _analysis_panel(response),
-            _budget_panel(budget),
+            _budget_panel(budget, response),
         )
         self._console.print(group)
 

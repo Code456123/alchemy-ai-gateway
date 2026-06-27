@@ -227,23 +227,6 @@ class InteractiveSession:
         if response.latency_ms and response.model:
             self._model_metrics.update(response.model.value, response.latency_ms)
 
-        # Display budget summary with UPDATED values - SINGLE display only
-        if response.model:
-            budget_text = Text()
-            budget_text.append("Budget Summary", style="bold cyan")
-            budget_text.append("\n────────────────────────────────\n")
-            budget_text.append("Request Details:\n", style="bold")
-            budget_text.append(f"  Model              {response.model.value}\n")
-            budget_text.append(f"  Prompt Tokens      {response.prompt_tokens}\n")
-            budget_text.append(f"  Completion Tokens  {response.completion_tokens}\n")
-            budget_text.append(f"  Request Cost       ${response.cost_usd:.6f}\n", style="yellow")
-            budget_text.append("\nSession Budget:\n", style="bold")
-            budget_text.append(f"  Used Budget        ${self._budget_manager.used_budget_usd:.6f}\n", style="yellow")
-            budget_text.append(f"  Remaining Budget   ${self._budget_manager.remaining_budget_usd:.2f}\n", style="yellow")
-            budget_text.append(f"  Economic Mode      {'ON' if self._budget_manager.economic_mode else 'OFF'}\n")
-
-            self._console.print(Panel(budget_text, border_style="cyan", padding=(0, 1)))
-
         # Display budget warning if threshold crossed
         if budget_warning:
             if budget_warning.level == "warning":
