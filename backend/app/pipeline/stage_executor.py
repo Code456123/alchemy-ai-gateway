@@ -44,6 +44,10 @@ class StageExecutor:
         """
         context.mark_running(stage_name)
         logger.info("Stage started: {}", stage_name.value)
+        self._dispatcher.emit(
+            PipelineEvent.STAGE_STARTED,
+            {"stage": stage_name.value},
+        )
 
         last_error: str | None = None
         attempt = 0

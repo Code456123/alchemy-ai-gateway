@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 import time
 from typing import Any
 
@@ -59,6 +58,7 @@ class PipelineContext(BaseModel):
     response_prompt_tokens: int = 0
     response_completion_tokens: int = 0
     response_latency_ms: float = 0.0
+    error: str | None = None
 
     # Metadata
     metadata: dict[str, Any] = Field(default_factory=dict)
@@ -67,6 +67,10 @@ class PipelineContext(BaseModel):
 
     # Execution trace
     execution_trace: ExecutionTrace = Field(default_factory=ExecutionTrace)
+
+    @property
+    def completed_stages(self) -> list[StageName]:
+        return self.execution_trace.completed_stages
 
     def mark_running(self, stage: StageName) -> None:
         self.current_stage = stage
@@ -78,6 +82,7 @@ class PipelineContext(BaseModel):
 
     def mark_failed(self, error: str) -> None:
         self.status = PipelineStatus.FAILED
+        self.error = error
         self.completed_at = time.time()
         self.metadata["terminal_error"] = error
 

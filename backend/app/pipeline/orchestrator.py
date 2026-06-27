@@ -53,7 +53,6 @@ class PipelineOrchestrator:
     - Build execution traces
     """
 
-    # Ordered stages for full pipeline execution
     STAGE_ORDER: list[StageName] = [
         StageName.FAST_DETECTOR,
         StageName.SECURITY,
@@ -83,7 +82,6 @@ class PipelineOrchestrator:
     ) -> None:
         self._settings = settings or get_settings()
 
-        # Existing modules (injected, never modified)
         self._fast_detector = fast_detector or FastRequestDetector()
         self._security = security or SecurityScanner(
             log_blocked=self._settings.security_log_blocked
@@ -96,7 +94,6 @@ class PipelineOrchestrator:
             self._settings.budget_daily_limit_usd
         )
 
-        # Pipeline infrastructure
         self._dispatcher = dispatcher or EventDispatcher()
         self._retry_manager = retry_manager or RetryManager()
         self._checkpoint_manager = checkpoint_manager or CheckpointManager(
@@ -106,7 +103,6 @@ class PipelineOrchestrator:
             self._retry_manager, self._checkpoint_manager, self._dispatcher
         )
 
-        # Map stage names to their execution functions
         self._stage_handlers: dict[StageName, Any] = {
             StageName.FAST_DETECTOR: self._run_fast_detector,
             StageName.SECURITY: self._run_security,
@@ -120,7 +116,6 @@ class PipelineOrchestrator:
         }
 
     def process(self, request: PromptRequest) -> PromptResponse:
-        """Process a request through the full pipeline."""
         context = PipelineContext(
             request_id=request.request_id,
             session_id=request.session_id,
@@ -128,11 +123,14 @@ class PipelineOrchestrator:
             model_override=request.model_override,
             economic_mode=self._budget_manager.economic_mode,
         )
+        self._dispatcher.emit(
+            PipelineEvent.PIPELINE_STARTED,
+            {"request_id": context.request_id},
+        )
         logger.info("Pipeline started request_id={}", context.request_id)
         return self._execute_pipeline(context, request)
 
     def resume(self, request_id: str, request: PromptRequest) -> PromptResponse:
-        """Resume a failed pipeline from the last checkpoint."""
         context = self._checkpoint_manager.load_checkpoint(request_id)
         if context is None:
             logger.warning(
@@ -150,25 +148,26 @@ class PipelineOrchestrator:
     def _execute_pipeline(
         self, context: PipelineContext, request: PromptRequest
     ) -> PromptResponse:
-        """Run stages in order, handling terminal events and failures."""
         context.status = PipelineStatus.RUNNING
 
-        # Determine which stages to run (skip already-completed on resume)
         completed = set(context.execution_trace.completed_stages)
         stages_to_run = [s for s in self.STAGE_ORDER if s not in completed]
 
         try:
             for stage_name in stages_to_run:
-                handler = self._stage_handlers[stage_name]
+                if self._should_skip(stage_name, context):
+                    self._executor.skip(stage_name, context)
+                    continue
 
-                # Check terminal conditions before running the next stage
-                if self._should_skip_remaining(stage_name, context):
-                    self._skip_remaining(stage_name, context)
+                self._executor.execute(
+                    stage_name, self._stage_handlers[stage_name], context
+                )
+
+                terminal_event = self._check_terminal(stage_name, context)
+                if terminal_event is not None:
+                    self._handle_terminal(stage_name, terminal_event, context)
                     break
 
-                self._executor.execute(stage_name, handler, context)
-
-            # Pipeline completed successfully
             if context.status == PipelineStatus.RUNNING:
                 context.mark_completed()
 
@@ -203,98 +202,128 @@ class PipelineOrchestrator:
 
         return self._build_response(context, request)
 
-    def _should_skip_remaining(
-        self, next_stage: StageName, context: PipelineContext
-    ) -> bool:
-        """Check if a terminal event means we should skip from next_stage onward."""
-        # Fast detector produced a complete response → skip everything after security
+    def _stage_index(self, stage: StageName) -> int:
+        return self.STAGE_ORDER.index(stage)
+
+    def _should_skip(self, stage_name: StageName, context: PipelineContext) -> bool:
+        """Determine if a stage should be skipped based on prior terminal results."""
+        idx = self._stage_index(stage_name)
+
+        # Fast path fired → skip everything after security
         if (
-            next_stage.value > StageName.FAST_DETECTOR.value
-            and next_stage != StageName.SECURITY
-            and context.fast_detector_result is not None
+            context.fast_detector_result is not None
             and context.fast_detector_result.is_fast_path
+            and idx > self._stage_index(StageName.SECURITY)
         ):
             return True
 
         # Security blocked → skip everything after security
         if (
-            next_stage.value > StageName.SECURITY.value
-            and context.security_result is not None
+            context.security_result is not None
             and context.security_result.is_blocked
+            and idx > self._stage_index(StageName.SECURITY)
         ):
             return True
 
         # Cache hit → skip context_manager, response_generation, cache_store
-        if (
-            next_stage in (StageName.CONTEXT_MANAGER, StageName.RESPONSE_GENERATION, StageName.CACHE_STORE)
-            and context.cache_hit is True
+        if context.cache_hit is True and stage_name in (
+            StageName.CONTEXT_MANAGER,
+            StageName.RESPONSE_GENERATION,
+            StageName.CACHE_STORE,
         ):
             return True
 
         return False
 
-    def _skip_remaining(self, from_stage: StageName, context: PipelineContext) -> None:
-        """Mark all stages from from_stage onward as SKIPPED."""
-        start_skipping = False
-        for stage in self.STAGE_ORDER:
-            if stage == from_stage:
-                start_skipping = True
-            if start_skipping and stage not in {
-                r.name for r in context.execution_trace.records
-            }:
+    def _check_terminal(
+        self, just_ran: StageName, context: PipelineContext
+    ) -> PipelineEvent | None:
+        """After a stage completes, check if it produced a terminal result."""
+        if (
+            just_ran == StageName.FAST_DETECTOR
+            and context.fast_detector_result is not None
+            and context.fast_detector_result.is_fast_path
+        ):
+            return PipelineEvent.FAST_RESPONSE
+
+        if (
+            just_ran == StageName.SECURITY
+            and context.security_result is not None
+            and context.security_result.is_blocked
+        ):
+            return PipelineEvent.SECURITY_BLOCKED
+
+        if just_ran == StageName.SEMANTIC_CACHE and context.cache_hit is True:
+            return PipelineEvent.CACHE_HIT
+
+        return None
+
+    def _handle_terminal(
+        self,
+        triggered_by: StageName,
+        event: PipelineEvent,
+        context: PipelineContext,
+    ) -> None:
+        """Skip remaining stages and set the terminal response."""
+        # Mark all subsequent un-recorded stages as SKIPPED
+        idx = self._stage_index(triggered_by)
+        recorded = {r.name for r in context.execution_trace.records}
+        for stage in self.STAGE_ORDER[idx + 1 :]:
+            if stage not in recorded:
+                # Fast-path terminal: still run security before skipping the rest
+                if (
+                    event == PipelineEvent.FAST_RESPONSE
+                    and stage == StageName.SECURITY
+                ):
+                    self._executor.execute(
+                        stage, self._stage_handlers[stage], context
+                    )
+                    if (
+                        context.security_result is not None
+                        and context.security_result.is_blocked
+                    ):
+                        event = PipelineEvent.SECURITY_BLOCKED
+                        break
+                    continue
                 self._executor.skip(stage, context)
 
-        # Determine termination reason
-        if context.fast_detector_result and context.fast_detector_result.is_fast_path:
-            reason = "fast_response"
-            context.response_text = context.fast_detector_result.canned_response or "OK."
-            self._dispatcher.emit(PipelineEvent.FAST_RESPONSE, {"request_id": context.request_id})
-        elif context.security_result and context.security_result.is_blocked:
-            reason = "security_blocked"
-            context.response_text = f"⛔ Request blocked: {context.security_result.reason}"
-            self._dispatcher.emit(PipelineEvent.SECURITY_BLOCKED, {"request_id": context.request_id})
-        elif context.cache_hit:
-            reason = "cache_hit"
+        # Set response based on terminal reason
+        if event == PipelineEvent.FAST_RESPONSE:
+            context.response_text = (
+                context.fast_detector_result.canned_response or "OK."
+                if context.fast_detector_result
+                else "OK."
+            )
+            context.mark_terminated_early("fast_response")
+        elif event == PipelineEvent.SECURITY_BLOCKED:
+            reason = (
+                context.security_result.reason if context.security_result else "blocked"
+            )
+            context.response_text = f"⛔ Request blocked: {reason}"
+            context.mark_terminated_early("security_blocked")
+        elif event == PipelineEvent.CACHE_HIT:
             context.response_text = context.cache_response_text
-            self._dispatcher.emit(PipelineEvent.CACHE_HIT, {"request_id": context.request_id})
-        else:
-            reason = "unknown"
+            context.mark_terminated_early("cache_hit")
 
-        context.mark_terminated_early(reason)
+        self._dispatcher.emit(event, {"request_id": context.request_id})
 
     # ── Stage handlers ──────────────────────────────────────────
 
     def _run_fast_detector(self, context: PipelineContext) -> None:
-        request = PromptRequest(
-            request_id=context.request_id,
-            prompt=context.user_query,
-            session_id=context.session_id,
-            model_override=context.model_override,
-        )
+        request = self._build_request(context)
         context.fast_detector_result = self._fast_detector.detect(request)
 
     def _run_security(self, context: PipelineContext) -> None:
-        request = PromptRequest(
-            request_id=context.request_id,
-            prompt=context.user_query,
-            session_id=context.session_id,
-            model_override=context.model_override,
-        )
+        request = self._build_request(context)
         context.security_result = self._security.scan(request)
 
     def _run_task_analyzer(self, context: PipelineContext) -> None:
-        request = PromptRequest(
-            request_id=context.request_id,
-            prompt=context.user_query,
-            session_id=context.session_id,
-            model_override=context.model_override,
-        )
+        request = self._build_request(context)
         context.analysis_result = self._task_analyzer.analyze(request)
 
     def _run_decision_engine(self, context: PipelineContext) -> None:
         prompt_tokens = _estimate_tokens(context.user_query)
         budget = self._build_budget_snapshot()
-
         context.budget_snapshot = budget
         context.routing_decision = self._router.decide(
             security=context.security_result,
@@ -307,7 +336,6 @@ class PipelineOrchestrator:
         )
 
     def _run_budget(self, context: PipelineContext) -> None:
-        # Budget manager tracks spend — no action needed pre-response
         context.budget_snapshot = self._build_budget_snapshot()
 
     def _run_semantic_cache(self, context: PipelineContext) -> None:
@@ -321,23 +349,21 @@ class PipelineOrchestrator:
             context.response_cost_usd = 0.0
         else:
             context.cache_hit = False
-            self._dispatcher.emit(PipelineEvent.CACHE_MISS, {"request_id": context.request_id})
+            self._dispatcher.emit(
+                PipelineEvent.CACHE_MISS, {"request_id": context.request_id}
+            )
 
     def _run_context_manager(self, context: PipelineContext) -> None:
-        # Context manager is not yet implemented — pass through
-        self._dispatcher.emit(PipelineEvent.CONTEXT_READY, {"request_id": context.request_id})
+        self._dispatcher.emit(
+            PipelineEvent.CONTEXT_READY, {"request_id": context.request_id}
+        )
 
     def _run_response_generation(self, context: PipelineContext) -> None:
         if context.routing_decision is None or context.routing_decision.model is None:
             context.response_text = "No model was available to serve this request."
             return
 
-        request = PromptRequest(
-            request_id=context.request_id,
-            prompt=context.user_query,
-            session_id=context.session_id,
-            model_override=context.model_override,
-        )
+        request = self._build_request(context)
         result = self._responder.generate(
             request, context.routing_decision.model, context.analysis_result
         )
@@ -366,6 +392,14 @@ class PipelineOrchestrator:
             )
 
     # ── Helpers ──────────────────────────────────────────────────
+
+    def _build_request(self, context: PipelineContext) -> PromptRequest:
+        return PromptRequest(
+            request_id=context.request_id,
+            prompt=context.user_query,
+            session_id=context.session_id,
+            model_override=context.model_override,
+        )
 
     def _build_budget_snapshot(self) -> BudgetSnapshot:
         return BudgetSnapshot(
