@@ -39,6 +39,7 @@ class RoutingEngine:
         fast_detector: FastDetectorResult | None = None,
         prompt_tokens: int = 0,
         model_override: str | None = None,
+        economic_mode: bool = False,
     ) -> RoutingDecision:
         """Produce a routing decision from the upstream pipeline signals.
 
@@ -52,6 +53,7 @@ class RoutingEngine:
             fast_detector: Output of the fast detector, if it ran.
             prompt_tokens: Estimated prompt token count for cost projection.
             model_override: Optional caller-forced model id.
+            economic_mode: If True, prefer cheaper models.
 
         Returns:
             An explainable :class:`RoutingDecision`.
@@ -88,18 +90,21 @@ class RoutingEngine:
             )
 
         # 5. Capability/complexity-based selection.
-        model, reason = self._select_by_analysis(analysis, budget)
+        model, reason = self._select_by_analysis(analysis, budget, economic_mode)
         return self._model_call(model, prompt_tokens, reason)
 
     def _select_by_analysis(
-        self, analysis: PromptAnalysis | None, budget: BudgetSnapshot
+        self, analysis: PromptAnalysis | None, budget: BudgetSnapshot, economic_mode: bool = False
     ) -> tuple[ModelID, str]:
-        """Choose a model from task analysis and budget pressure."""
+        """Choose a model from task analysis and budget pressure.
+
+        If economic_mode=True, prefer cheaper models (local 2B > gpt-4o-mini > gpt-4o).
+        """
         if analysis is None:
             return ModelID.GPT4O_MINI, "No analysis available → balanced mini"
 
         # Vision is only supported by the flagship model.
-        if analysis.needs_vision:
+        if analysis.needs_vision and not economic_mode:
             return ModelID.GPT4O, "Vision required → GPT-4o"
 
         high = analysis.complexity >= COMPLEXITY_HIGH_THRESHOLD
@@ -110,6 +115,16 @@ class RoutingEngine:
 
         # Under budget pressure (LOW), avoid the flagship model.
         budget_pressured = budget.state is BudgetState.LOW
+
+        # Economic mode: prefer cheaper models
+        if economic_mode:
+            if not heavy_capability or low:
+                return ModelID.LOCAL_2B, (
+                    f"Economic mode + low/medium complexity ({analysis.complexity:.2f}) → local 2B"
+                )
+            return ModelID.GPT4O_MINI, (
+                f"Economic mode + heavy capability ({analysis.complexity:.2f}) → GPT-4o-mini"
+            )
 
         if high and heavy_capability and not budget_pressured:
             return ModelID.GPT4O, (

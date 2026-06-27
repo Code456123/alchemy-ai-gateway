@@ -54,8 +54,11 @@ class Settings(BaseSettings):
 
     # ── Budget ───────────────────────────────────
     budget_daily_limit_usd: Annotated[float, Field(gt=0.0)] = 5.00
-    budget_warning_threshold: Ratio = 0.60
-    budget_critical_threshold: Ratio = 0.85
+    budget_warning_threshold: Ratio = 0.75
+    budget_critical_threshold: Ratio = 0.90
+    budget_session_limit_usd: Annotated[float, Field(gt=0.0)] = 2.00
+    pricing_cache_ttl_seconds: Annotated[int, Field(gt=0)] = 3600
+    economic_mode_default: bool = False
 
     # ── Semantic Cache ───────────────────────────
     cache_similarity_threshold: Ratio = 0.85
