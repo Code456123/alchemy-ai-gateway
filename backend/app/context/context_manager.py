@@ -25,8 +25,8 @@ from backend.app.constants.enums import BudgetState
 from backend.app.context.chunking import SemanticChunker
 from backend.app.context.memory import UnifiedMemoryService, WorkingMemory
 from backend.app.context.memory.vector_store_adapter import (
-    LocalVectorStoreAdapter,
     VectorStoreAdapter,
+    create_vector_adapter,
 )
 from backend.app.context.models import (
     ChunkType,
@@ -60,7 +60,12 @@ class ContextManager:
         self._settings = settings or get_settings()
         self._embedding = embedding_engine or EmbeddingEngine()
 
-        adapter = vector_adapter or LocalVectorStoreAdapter(self._embedding.dimension)
+        adapter = vector_adapter or create_vector_adapter(
+            pinecone_api_key=self._settings.pinecone_api_key,
+            pinecone_index_name=self._settings.pinecone_index_name,
+            pinecone_namespace=self._settings.pinecone_namespace,
+            dimension=self._embedding.dimension,
+        )
         self._working_memory = working_memory or WorkingMemory(max_chunks=50)
         self._unified_memory = UnifiedMemoryService(adapter, self._embedding)
         self._chunker = SemanticChunker()

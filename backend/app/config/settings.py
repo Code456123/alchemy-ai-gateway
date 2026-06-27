@@ -65,6 +65,11 @@ class Settings(BaseSettings):
     cache_default_ttl_hours: Annotated[int, Field(gt=0)] = 168
     embedding_model: str = "all-MiniLM-L6-v2"
 
+    # ── Pinecone Vector DB ───────────────────────
+    pinecone_api_key: str = ""
+    pinecone_index_name: str = ""
+    pinecone_namespace: str = "alchemy"
+
     # ── Database ─────────────────────────────────
     database_path: Path = Path("data/alchemy.db")
 
@@ -86,12 +91,6 @@ class Settings(BaseSettings):
     context_continuity_weight: float = 0.2
     context_importance_weight: float = 0.15
     context_min_relevance_score: float = 0.1
-
-    # ── Pinecone (Unified Memory) ──────────────
-    pinecone_api_key: str = ""
-    pinecone_index_name: str = "alchemy-memory"
-    pinecone_environment: str = ""
-    pinecone_dimension: int = 512
 
     @field_validator("alchemy_log_level", mode="before")
     @classmethod
