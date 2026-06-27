@@ -73,9 +73,25 @@ class Settings(BaseSettings):
     security_log_blocked: bool = True
 
     # ── Context Manager ─────────────────────────
-    context_max_chunks_healthy: int = 5
-    context_max_chunks_low: int = 3
+    context_max_chunks_healthy: int = 10
+    context_max_chunks_low: int = 5
     context_summary_max_tokens: int = 200
+    context_top_k: int = 10
+    context_max_context_tokens: int = 2000
+    context_working_memory_size: int = 50
+    context_min_chunk_tokens: int = 200
+    context_max_chunk_tokens: int = 300
+    context_similarity_weight: float = 0.4
+    context_recency_weight: float = 0.25
+    context_continuity_weight: float = 0.2
+    context_importance_weight: float = 0.15
+    context_min_relevance_score: float = 0.1
+
+    # ── Pinecone (Unified Memory) ──────────────
+    pinecone_api_key: str = ""
+    pinecone_index_name: str = "alchemy-memory"
+    pinecone_environment: str = ""
+    pinecone_dimension: int = 512
 
     @field_validator("alchemy_log_level", mode="before")
     @classmethod

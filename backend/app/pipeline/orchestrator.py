@@ -16,6 +16,7 @@ from backend.app.budget.budget_manager import BudgetManager
 from backend.app.config.settings import Settings, get_settings
 from backend.app.constants.enums import RoutingAction
 from backend.app.constants.models import ModelID
+from backend.app.context import ContextManager
 from backend.app.gateway.mock import MockResponseEngine
 from backend.app.models.budget import BudgetSnapshot
 from backend.app.models.request import PromptRequest
@@ -95,6 +96,7 @@ class PipelineOrchestrator:
         self._budget_manager = budget_manager or BudgetManager(
             self._settings.budget_daily_limit_usd
         )
+        self._context_manager = ContextManager(settings=self._settings)
 
         self._dispatcher = dispatcher or EventDispatcher()
         self._retry_manager = retry_manager or RetryManager()
@@ -368,8 +370,27 @@ class PipelineOrchestrator:
             )
 
     def _run_context_manager(self, context: PipelineContext) -> None:
+        budget = self._build_budget_snapshot()
+        context_result = self._context_manager.prepare_context(
+            user_query=context.user_query,
+            budget=budget,
+            top_k=self._settings.context_top_k,
+        )
+        context.context_result = context_result
+        logger.debug(
+            "Context prepared: {} chunks, ~{} tokens, strategy={}",
+            context_result.chunks_used,
+            context_result.total_context_tokens,
+            context_result.strategy_used,
+        )
         self._dispatcher.emit(
-            PipelineEvent.CONTEXT_READY, {"request_id": context.request_id}
+            PipelineEvent.CONTEXT_READY,
+            {
+                "request_id": context.request_id,
+                "chunks_used": context_result.chunks_used,
+                "tokens": context_result.total_context_tokens,
+                "strategy": context_result.strategy_used,
+            },
         )
 
     def _run_response_generation(self, context: PipelineContext) -> None:
@@ -389,6 +410,15 @@ class PipelineOrchestrator:
         context.response_latency_ms = result.latency_ms
 
         self._budget_manager.update(result.cost_usd)
+
+        model_name = context.routing_decision.model.value if context.routing_decision.model else ""
+        task_type = context.analysis_result.task_type.value if context.analysis_result else ""
+        self._context_manager.update_memory(
+            user_query=context.user_query,
+            response_text=result.text,
+            model_used=model_name,
+            topic=task_type,
+        )
 
         self._dispatcher.emit(
             PipelineEvent.RESPONSE_SUCCESS,
