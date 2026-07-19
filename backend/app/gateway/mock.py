@@ -40,7 +40,16 @@ def _estimate_tokens(text: str) -> int:
 class MockResult:
     """Lightweight container for a simulated model call result."""
 
-    __slots__ = ("completion_tokens", "cost_usd", "latency_ms", "model", "prompt_tokens", "text")
+    __slots__ = (
+        "completion_tokens",
+        "cost_usd",
+        "latency_ms",
+        "model",
+        "prompt_tokens",
+        "provider",
+        "provider_model",
+        "text",
+    )
 
     def __init__(
         self,
@@ -51,6 +60,8 @@ class MockResult:
         cost_usd: float,
         prompt_tokens: int,
         completion_tokens: int,
+        provider: str | None = None,
+        provider_model: str | None = None,
     ) -> None:
         self.text = text
         self.model = model
@@ -58,6 +69,8 @@ class MockResult:
         self.cost_usd = cost_usd
         self.prompt_tokens = prompt_tokens
         self.completion_tokens = completion_tokens
+        self.provider = provider
+        self.provider_model = provider_model
 
 
 class MockResponseEngine:
@@ -121,6 +134,8 @@ class MockResponseEngine:
             cost_usd=cost_usd,
             prompt_tokens=prompt_tokens,
             completion_tokens=completion_tokens,
+            provider="mock",
+            provider_model=model.value,
         )
 
     def _compose_text(

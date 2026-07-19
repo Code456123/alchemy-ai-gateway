@@ -393,7 +393,9 @@ class PipelineOrchestrator:
             context_text=context_text,
         )
         context.response_text = result.text
-        context.response_model = context.routing_decision.model
+        context.response_model = result.model
+        context.response_provider = result.provider
+        context.response_provider_model = result.provider_model
         context.response_cost_usd = result.cost_usd
         context.response_prompt_tokens = result.prompt_tokens
         context.response_completion_tokens = result.completion_tokens
@@ -451,6 +453,8 @@ class PipelineOrchestrator:
             request_id=context.request_id,
             text=context.response_text or "No response generated.",
             model=context.response_model,
+            provider=context.response_provider,
+            provider_model=context.response_provider_model,
             blocked=blocked,
             cached=cached,
             latency_ms=context.total_latency_ms,

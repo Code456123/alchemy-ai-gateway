@@ -26,6 +26,11 @@ class PromptResponse(BaseModel):
     request_id: str
     text: str = Field(description="The answer returned to the user (mock for now).")
     model: ModelID | None = Field(default=None, description="Model that served the request.")
+    provider: str | None = Field(default=None, description="Provider that served the request.")
+    provider_model: str | None = Field(
+        default=None,
+        description="Provider-specific model identifier that served the request.",
+    )
     blocked: bool = Field(default=False, description="True if security blocked the request.")
     cached: bool = Field(default=False, description="True if served from cache.")
 

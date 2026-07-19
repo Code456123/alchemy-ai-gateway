@@ -117,6 +117,8 @@ class GroqGateway:
                 cost_usd=cost_usd,
                 prompt_tokens=prompt_tokens,
                 completion_tokens=completion_tokens,
+                provider="groq",
+                provider_model=self._model or model.value,
             )
 
         except httpx.HTTPStatusError as exc:

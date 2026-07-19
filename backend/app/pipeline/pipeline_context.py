@@ -56,6 +56,8 @@ class PipelineContext(BaseModel):
     context_result: Any | None = None
     response_text: str | None = None
     response_model: ModelID | None = None
+    response_provider: str | None = None
+    response_provider_model: str | None = None
     response_cost_usd: float = 0.0
     response_prompt_tokens: int = 0
     response_completion_tokens: int = 0

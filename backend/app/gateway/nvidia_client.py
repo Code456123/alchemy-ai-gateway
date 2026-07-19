@@ -7,6 +7,7 @@ from loguru import logger
 
 from backend.app.config.settings import Settings, get_settings
 from backend.app.constants.models import ModelID
+from backend.app.gateway.groq_client import GroqGateway
 from backend.app.gateway.mock import MockResponseEngine, MockResult
 from backend.app.models.analysis import PromptAnalysis
 from backend.app.models.request import PromptRequest
@@ -43,6 +44,7 @@ class NvidiaGateway:
             "Content-Type": "application/json",
         }
         self._pricing_service = PricingService()
+        self._groq_gateway = GroqGateway(settings=self._settings, fallback=self._fallback)
 
         logger.info(
             "NvidiaGateway initialized endpoint={} model={} timeout={}s",
@@ -120,6 +122,8 @@ class NvidiaGateway:
                 cost_usd=cost_usd,
                 prompt_tokens=prompt_tokens,
                 completion_tokens=completion_tokens,
+                provider="nvidia",
+                provider_model=self._model or model.value,
             )
 
         except httpx.HTTPStatusError as exc:
@@ -131,7 +135,7 @@ class NvidiaGateway:
                 latency_ms,
                 exc.response.text[:200],
             )
-            return self._fallback.generate(request, model, analysis)
+            return self._retry_with_groq(request, model, analysis, context_text)
 
         except httpx.TimeoutException:
             latency_ms = (time.perf_counter() - start) * 1000.0
@@ -141,7 +145,7 @@ class NvidiaGateway:
                 latency_ms,
                 self._timeout,
             )
-            return self._fallback.generate(request, model, analysis)
+            return self._retry_with_groq(request, model, analysis, context_text)
 
         except Exception as exc:
             latency_ms = (time.perf_counter() - start) * 1000.0
@@ -151,5 +155,35 @@ class NvidiaGateway:
                 latency_ms,
                 exc,
             )
-            return self._fallback.generate(request, model, analysis)
+            return self._fallback.generate(request, model, analysis, context_text)
+
+    def _retry_with_groq(
+        self,
+        request: PromptRequest,
+        model: ModelID,
+        analysis: PromptAnalysis | None = None,
+        context_text: str = "",
+    ) -> MockResult:
+        """Try Groq before falling back to the mock engine."""
+        if self._has_groq_config():
+            logger.warning(
+                "Nvidia gateway failed for model={} — retrying with Groq gateway",
+                self._model,
+            )
+            try:
+                return self._groq_gateway.generate(request, model, analysis, context_text)
+            except Exception as exc:
+                logger.warning(
+                    "Groq retry for NVIDIA failure also failed: {}",
+                    exc,
+                )
+
+        return self._fallback.generate(request, model, analysis, context_text)
+
+    def _has_groq_config(self) -> bool:
+        return bool(
+            getattr(self._settings, "groq_api_key", "")
+            and getattr(self._settings, "groq_base_url", "")
+            and getattr(self._settings, "groq_model", "")
+        )
 

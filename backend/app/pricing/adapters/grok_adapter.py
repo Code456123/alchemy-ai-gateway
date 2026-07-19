@@ -22,6 +22,12 @@ class GrokAdapter:
                 "currency": "USD",
                 "unit": "per_1k_tokens",
             },
+            "llama-3.3-70b-versatile": {
+                "input_price": 0.00069,
+                "output_price": 0.00069,
+                "currency": "USD",
+                "unit": "per_1k_tokens",
+            },
         }
 
     async def get_model_pricing(self, model_name: str) -> dict:

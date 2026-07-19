@@ -202,9 +202,13 @@ def _model_card(response: PromptResponse) -> Panel:
         sb = response.routing.score_breakdown
         score = f"Score {sb.total_score:.0f}/100 [{sb.band}]"
 
+    provider_label = response.provider or "—"
+    provider_model = response.provider_model or response.model.value if response.model else "—"
     detail_rows: list[tuple[str, Text | str]] = [
         ("Model", Text(display_name, style=f"bold {GREEN}")),
         ("ID", Text(model_val, style=DIM)),
+        ("Provider", Text(provider_label.title(), style=f"bold {CYAN}")),
+        ("Provider Model", Text(provider_model, style=DIM)),
     ]
     if score:
         detail_rows.append(("Score", Text(score, style=f"bold {CYAN}")))
@@ -374,6 +378,8 @@ def _decision_report(response: PromptResponse, budget: BudgetSnapshot) -> Panel:
 
     model_val = response.model.value if response.model else _PLACEHOLDER
     display_name = _MODEL_DISPLAY.get(model_val, (model_val, ""))[0] if response.model else _PLACEHOLDER
+    provider = (response.provider or "—").title()
+    provider_model = response.provider_model or (response.model.value if response.model else _PLACEHOLDER)
 
     task = response.analysis.task_type.value.title() if response.analysis else (
         "Fast-path" if response.fast_detector and response.fast_detector.is_fast_path else "—"
@@ -384,6 +390,8 @@ def _decision_report(response: PromptResponse, budget: BudgetSnapshot) -> Panel:
     table.add_row("Task", task)
     table.add_row("Complexity", complexity)
     table.add_row("Model", display_name)
+    table.add_row("Provider", provider)
+    table.add_row("Provider Model", provider_model)
     table.add_row("Latency", f"{response.latency_ms:.1f} ms" if response.latency_ms else _PLACEHOLDER)
     table.add_row("Cost", f"${response.cost_usd:.6f}")
     table.add_row("Cache", "⚡ HIT" if response.cached else "○ MISS")
@@ -434,6 +442,8 @@ def _pipeline_summary(response: PromptResponse) -> Panel:
         response.model.value, (response.model.value, "")
     )[0] if response.model else "None"
 
+    provider = (response.provider or "—").title()
+    provider_model = response.provider_model or (response.model.value if response.model else "None")
     rows: list[tuple[str, Text | str]] = [
         ("Status", Text("✓ Success", style=f"bold {GREEN}") if not is_blocked else Text("✗ Blocked", style=f"bold {RED}")),
         ("Termination", termination),
@@ -441,6 +451,8 @@ def _pipeline_summary(response: PromptResponse) -> Panel:
         ("Skipped", str(skipped)),
         ("Latency", f"{response.latency_ms:.2f} ms"),
         ("Model", model),
+        ("Provider", provider),
+        ("Provider Model", provider_model),
         ("Cost", f"${response.cost_usd:.6f}"),
         ("Cache", "HIT" if is_cached else "MISS"),
     ]

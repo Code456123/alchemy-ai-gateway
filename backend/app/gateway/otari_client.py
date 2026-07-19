@@ -136,6 +136,8 @@ class OtariGateway:
                 cost_usd=cost_usd,
                 prompt_tokens=prompt_tokens,
                 completion_tokens=completion_tokens,
+                provider="otari",
+                provider_model=model.value,
             )
 
         except httpx.HTTPStatusError as exc:

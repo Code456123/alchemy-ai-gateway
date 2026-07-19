@@ -8,10 +8,13 @@ import pytest
 
 from backend.app.config.settings import Settings, get_settings
 from backend.app.constants.models import ModelID
-from backend.app.gateway.mock import MockResponseEngine
+from backend.app.gateway.groq_client import GroqGateway
+from backend.app.gateway.mock import MockResponseEngine, MockResult
+from backend.app.gateway.nvidia_client import NvidiaGateway
 from backend.app.gateway.ollama_client import OllamaGateway
 from backend.app.gateway.otari_client import OtariGateway, create_gateway
 from backend.app.models.request import PromptRequest
+from backend.app.pricing import PricingService
 
 # ── Factory Tests ──────────────────────────
 
@@ -83,6 +86,113 @@ def test_ollama_gateway_generate_success(monkeypatch: pytest.MonkeyPatch) -> Non
     assert result.prompt_tokens > 0
     assert result.completion_tokens > 0
     assert result.latency_ms > 0
+
+
+def test_nvidia_gateway_retries_with_groq_on_timeout(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Timeouts on NVIDIA should trigger a Groq retry before falling back to mock."""
+    import httpx
+
+    monkeypatch.setenv("NVIDIA_API_KEY", "nv-test")
+    monkeypatch.setenv("NVIDIA_BASE_URL", "https://api.nvidia.test")
+    monkeypatch.setenv("NVIDIA_MODEL", "nvidia-test-model")
+    monkeypatch.setenv("GROQ_API_KEY", "groq-test")
+    monkeypatch.setenv("GROQ_BASE_URL", "https://api.groq.test")
+    monkeypatch.setenv("GROQ_MODEL", "llama3-8b")
+    get_settings.cache_clear()
+    settings = get_settings()
+    gateway = NvidiaGateway(settings=settings)
+    prompt_request = PromptRequest(prompt="Explain recursion")
+    groq_result = MockResult(
+        text="Groq handled it",
+        model=ModelID.GPT4O_MINI,
+        latency_ms=12.0,
+        cost_usd=0.0,
+        prompt_tokens=2,
+        completion_tokens=3,
+    )
+
+    with patch("backend.app.gateway.nvidia_client.httpx.Client") as mock_client_cls:
+        mock_client_cls.return_value.__enter__.return_value.post.side_effect = (
+            httpx.TimeoutException("timed out")
+        )
+        with patch.object(GroqGateway, "generate", return_value=groq_result) as mock_groq_generate:
+            result = gateway.generate(prompt_request, ModelID.GPT4O_MINI)
+
+    assert result is groq_result
+    mock_groq_generate.assert_called_once()
+
+
+def test_nvidia_gateway_retries_with_groq_on_http_error(monkeypatch: pytest.MonkeyPatch) -> None:
+    """HTTP failures on NVIDIA should trigger a Groq retry before falling back to mock."""
+    import httpx
+
+    monkeypatch.setenv("NVIDIA_API_KEY", "nv-test")
+    monkeypatch.setenv("NVIDIA_BASE_URL", "https://api.nvidia.test")
+    monkeypatch.setenv("NVIDIA_MODEL", "nvidia-test-model")
+    monkeypatch.setenv("GROQ_API_KEY", "groq-test")
+    monkeypatch.setenv("GROQ_BASE_URL", "https://api.groq.test")
+    monkeypatch.setenv("GROQ_MODEL", "llama3-8b")
+    get_settings.cache_clear()
+    settings = get_settings()
+    gateway = NvidiaGateway(settings=settings)
+    prompt_request = PromptRequest(prompt="Explain recursion")
+    groq_result = MockResult(
+        text="Groq handled the HTTP error",
+        model=ModelID.GPT4O,
+        latency_ms=14.0,
+        cost_usd=0.0,
+        prompt_tokens=2,
+        completion_tokens=3,
+    )
+
+    with patch("backend.app.gateway.nvidia_client.httpx.Client") as mock_client_cls:
+        mock_response = mock_client_cls.return_value.__enter__.return_value.post.return_value
+        mock_response.status_code = 500
+        mock_response.text = "Internal Server Error"
+        mock_response.raise_for_status.side_effect = httpx.HTTPStatusError(
+            "500",
+            request=httpx.Request("POST", "https://api.nvidia.test"),
+            response=mock_response,
+        )
+        with patch.object(GroqGateway, "generate", return_value=groq_result) as mock_groq_generate:
+            result = gateway.generate(prompt_request, ModelID.GPT4O)
+
+    assert result is groq_result
+    mock_groq_generate.assert_called_once()
+
+
+def test_groq_gateway_exposes_provider_metadata(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Groq responses should preserve the provider/model that actually served the request."""
+    monkeypatch.setenv("GROQ_API_KEY", "groq-test")
+    monkeypatch.setenv("GROQ_BASE_URL", "https://api.groq.test")
+    monkeypatch.setenv("GROQ_MODEL", "llama-3.3-70b-versatile")
+    get_settings.cache_clear()
+    settings = get_settings()
+    gateway = GroqGateway(settings=settings)
+    prompt_request = PromptRequest(prompt="Explain recursion")
+
+    api_response = {
+        "choices": [{"message": {"content": "Groq answered"}}],
+        "usage": {"prompt_tokens": 12, "completion_tokens": 5},
+    }
+
+    with patch("backend.app.gateway.groq_client.httpx.Client") as mock_client_cls:
+        mock_response = mock_client_cls.return_value.__enter__.return_value.post.return_value
+        mock_response.status_code = 200
+        mock_response.json.return_value = api_response
+        mock_response.raise_for_status.return_value = None
+
+        result = gateway.generate(prompt_request, ModelID.LLAMA_3_3_70B)
+
+    assert result.provider == "groq"
+    assert result.provider_model == "llama-3.3-70b-versatile"
+
+
+def test_pricing_service_supports_groq_llama_model() -> None:
+    """Groq's Llama 3.3 70B model should have explicit pricing."""
+    service = PricingService()
+    cost = service.calculate_cost("groq", "llama-3.3-70b-versatile", 1000, 1000)
+    assert cost == pytest.approx(0.00138)
 
 
 # ── OtariGateway Interface Tests ──────────────────────────

@@ -118,6 +118,8 @@ Assistant:
                 cost_usd=cost_usd,
                 prompt_tokens=prompt_tokens,
                 completion_tokens=completion_tokens,
+                provider="ollama",
+                provider_model=self._model or model.value,
             )
 
         except Exception as exc:
