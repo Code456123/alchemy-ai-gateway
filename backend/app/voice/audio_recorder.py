@@ -51,9 +51,31 @@ class AudioRecorder:
     def check_microphone(self) -> bool:
         try:
             import sounddevice as sd
+
             devices = sd.query_devices()
-            default_input = sd.query_devices(kind="input")
-            return default_input is not None
+            if not devices:
+                return False
+
+            default_device = sd.default.device
+            default_input_index = None
+            if isinstance(default_device, tuple):
+                default_input_index = default_device[0]
+            else:
+                default_input_index = default_device
+
+            if isinstance(default_input_index, int) and default_input_index >= 0:
+                try:
+                    default_input = sd.query_devices(default_input_index, kind="input")
+                    if default_input and default_input.get("max_input_channels", 0) > 0:
+                        return True
+                except Exception:
+                    pass
+
+            for device in devices:
+                if device.get("max_input_channels", 0) > 0:
+                    return True
+
+            return False
         except Exception:
             return False
 

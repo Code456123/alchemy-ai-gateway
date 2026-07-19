@@ -14,7 +14,7 @@ from loguru import logger
 
 from backend.app.budget.budget_manager import BudgetManager
 from backend.app.config.settings import Settings, get_settings
-from backend.app.constants.enums import RoutingAction
+from backend.app.constants.enums import RoutingAction, TaskType
 from backend.app.constants.models import ModelID
 from backend.app.context import ContextManager
 from backend.app.gateway.mock import MockResponseEngine
@@ -358,6 +358,7 @@ class PipelineOrchestrator:
             user_query=context.user_query,
             budget=budget,
             top_k=self._settings.context_top_k,
+            task_type=context.analysis_result.task_type if context.analysis_result else None,
         )
         context.context_result = context_result
         logger.debug(

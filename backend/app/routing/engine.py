@@ -9,8 +9,9 @@ from __future__ import annotations
 
 from loguru import logger
 
-from backend.app.constants.enums import BudgetState, RoutingAction
+from backend.app.constants.enums import BudgetState, RoutingAction, TaskType
 from backend.app.constants.models import MODEL_COSTS, MODEL_FALLBACK_CHAIN, ModelID
+from backend.app.config.settings import Settings, get_settings
 from backend.app.constants.thresholds import (
     SCORE_CONTEXT_TOKEN_THRESHOLD,
     SCORE_WEIGHT_BUDGET,
@@ -35,8 +36,13 @@ _ESTIMATED_COMPLETION_TOKENS = 256
 class RoutingEngine:
     """Selects the best Mozilla Otari model via capability-aware registry."""
 
-    def __init__(self, registry: ModelRegistry | None = None) -> None:
+    def __init__(
+        self,
+        registry: ModelRegistry | None = None,
+        settings: Settings | None = None,
+    ) -> None:
         self._registry = registry or ModelRegistry()
+        self._settings = settings or get_settings()
 
     def decide(
         self,
@@ -96,7 +102,15 @@ class RoutingEngine:
                 f"No analysis available → default {default.value}",
             )
 
-        # 6. Registry-driven capability-aware selection.
+        # 6. Auto provider routing between local Ollama and NVIDIA when both are configured.
+        if self._has_ollama_and_nvidia():
+            model, reason = self._select_ollama_or_nvidia(
+                analysis, budget, prompt_tokens, economic_mode
+            )
+            breakdown = self._compute_score(analysis, budget, prompt_tokens, economic_mode)
+            return self._model_call(model, prompt_tokens, reason, score_breakdown=breakdown)
+
+        # 7. Registry-driven capability-aware selection.
         model, reason, breakdown = self._select_via_registry(
             analysis, budget, prompt_tokens, economic_mode
         )
@@ -177,6 +191,86 @@ class RoutingEngine:
             economic_penalty=economic_penalty,
             total_score=total,
             hard_gate=hard_gate,
+        )
+
+    def _select_ollama_or_nvidia(
+        self,
+        analysis: PromptAnalysis,
+        budget: BudgetSnapshot,
+        prompt_tokens: int,
+        economic_mode: bool,
+    ) -> tuple[ModelID, str]:
+        """Choose between Ollama local and NVIDIA cloud for auto provider mode."""
+        local_score = 0.0
+        nvidia_score = 0.0
+
+        if analysis.needs_coding:
+            nvidia_score += 3.0
+        if analysis.needs_reasoning:
+            nvidia_score += 3.0
+        if analysis.complexity >= 0.65:
+            nvidia_score += 2.0
+        if analysis.needs_context:
+            nvidia_score += 1.0
+        if prompt_tokens > SCORE_CONTEXT_TOKEN_THRESHOLD:
+            nvidia_score += 1.0
+        if analysis.task_type in {
+            TaskType.CODING,
+            TaskType.REASONING,
+            TaskType.MATH,
+            TaskType.PLANNING,
+        }:
+            nvidia_score += 1.0
+
+        if analysis.complexity <= 0.35 and not analysis.needs_coding and not analysis.needs_reasoning:
+            local_score += 2.0
+        if analysis.task_type in {
+            TaskType.GENERAL,
+            TaskType.CONVERSATION,
+            TaskType.SUMMARIZATION,
+            TaskType.CLASSIFICATION,
+        }:
+            local_score += 1.0
+
+        if budget.state is BudgetState.CRITICAL:
+            local_score += 5.0
+        elif budget.state is BudgetState.LOW:
+            local_score += 1.0
+            nvidia_score -= 0.5
+        elif economic_mode:
+            local_score += 0.5
+
+        if local_score >= nvidia_score:
+            return (
+                ModelID.LOCAL_2B,
+                (
+                    f"Auto provider routing → Ollama local based on task={analysis.task_type.value}, "
+                    f"complexity={analysis.complexity:.2f}, budget={budget.state.value}"
+                ),
+            )
+
+        selected = ModelID.GPT4O_MINI
+        if analysis.complexity >= 0.85 or analysis.needs_reasoning or analysis.needs_coding:
+            selected = ModelID.GPT4O
+
+        if budget.state is BudgetState.LOW and selected is ModelID.GPT4O:
+            selected = ModelID.GPT4O_MINI
+
+        return (
+            selected,
+            (
+                f"Auto provider routing → NVIDIA cloud based on task={analysis.task_type.value}, "
+                f"complexity={analysis.complexity:.2f}, coding={analysis.needs_coding}, "
+                f"reasoning={analysis.needs_reasoning}, context={analysis.needs_context}, "
+                f"budget={budget.state.value}"
+            ),
+        )
+
+    def _has_ollama_and_nvidia(self) -> bool:
+        return bool(
+            getattr(self._settings, "ollama_base_url", "")
+            and getattr(self._settings, "nvidia_api_key", "")
+            and getattr(self._settings, "nvidia_base_url", "")
         )
 
     def _model_call(

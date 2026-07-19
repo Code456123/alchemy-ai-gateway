@@ -12,7 +12,8 @@ from datetime import UTC, datetime
 
 from loguru import logger
 
-from backend.app.context.models import RankedChunk, SemanticChunk
+from backend.app.constants.enums import TaskType
+from backend.app.context.models import ChunkType, RankedChunk, SemanticChunk
 
 
 class ContextRelevanceFilter:
@@ -37,6 +38,7 @@ class ContextRelevanceFilter:
         candidates: list[tuple[SemanticChunk, float]],
         max_chunks: int = 10,
         current_session_id: str = "",
+        task_type: TaskType | None = None,
     ) -> list[RankedChunk]:
         """Rank candidate chunks and return the top-scoring ones."""
         start = time.perf_counter()
@@ -48,6 +50,10 @@ class ContextRelevanceFilter:
         ranked: list[RankedChunk] = []
 
         for chunk, similarity in candidates:
+            if chunk.chunk_type == ChunkType.MODEL_RESPONSE:
+                if task_type != TaskType.CONVERSATION or chunk.session_id != current_session_id:
+                    continue
+
             recency = self._recency_score(chunk.timestamp, now)
             continuity = 1.0 if chunk.session_id == current_session_id else 0.3
             importance = chunk.importance_score

@@ -121,10 +121,10 @@ _OTARI_MODELS: tuple[ModelCapability, ...] = (
 )
 
 # The cheapest Otari model, used as the absolute fallback.
-_CHEAPEST_OTARI = ModelID.LLAMA_3_1_8B
+_CHEAPEST_OTARI = ModelID.GPT4O_MINI
 
 # Default model when no analysis is available.
-_DEFAULT_MODEL = ModelID.LLAMA_3_1_8B
+_DEFAULT_MODEL = ModelID.GPT4O_MINI
 
 
 class ModelRegistry:

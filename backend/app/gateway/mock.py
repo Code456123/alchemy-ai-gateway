@@ -14,6 +14,7 @@ import time
 from loguru import logger
 
 from backend.app.constants.models import MODEL_COSTS, ModelID
+from backend.app.pricing import PricingService
 from backend.app.models.analysis import PromptAnalysis
 from backend.app.models.request import PromptRequest
 
@@ -72,6 +73,7 @@ class MockResponseEngine:
         """
         self._simulate_latency = simulate_latency
         self._rng = random.Random(seed)
+        self._pricing_service = PricingService()
 
     def generate(
         self,
@@ -100,7 +102,9 @@ class MockResponseEngine:
         text = self._compose_text(request, model, analysis)
         prompt_tokens = _estimate_tokens(request.prompt)
         completion_tokens = _estimate_tokens(text)
-        cost_usd = self._cost(model, prompt_tokens, completion_tokens)
+        cost_usd = self._pricing_service.calculate_cost(
+            "mock", model.value, prompt_tokens, completion_tokens
+        )
 
         logger.debug(
             "Mock response model={} latency={}ms tokens={}+{} cost=${:.5f}",
@@ -134,11 +138,3 @@ class MockResponseEngine:
             f"Ollama/Otari gateway is integrated."
         )
 
-    @staticmethod
-    def _cost(model: ModelID, prompt_tokens: int, completion_tokens: int) -> float:
-        """Compute USD cost from static per-1K-token pricing."""
-        costs = MODEL_COSTS.get(model, {"input": 0.0, "output": 0.0})
-        total = (prompt_tokens / 1000.0) * costs["input"] + (completion_tokens / 1000.0) * costs[
-            "output"
-        ]
-        return round(total, 6)

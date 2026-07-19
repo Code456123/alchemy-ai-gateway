@@ -14,9 +14,9 @@ from loguru import logger
 from backend.app.context.models import ContextResult, RankedChunk, SemanticChunk, SessionSummary
 
 _DEFAULT_SYSTEM_PROMPT = (
-    "You are a helpful AI assistant. Use the conversation context provided "
-    "below to give accurate, relevant responses. If previous context is "
-    "available, maintain continuity with prior discussions."
+    "You are a helpful AI assistant. When relevant context is available, use it to give accurate, relevant responses and maintain continuity. "
+    "If the retrieved context does not answer the question, answer using your own knowledge and reasoning. "
+    "Use context only as a supplement, not as the sole source of truth."
 )
 
 _CHARS_PER_TOKEN = 4
@@ -97,6 +97,16 @@ class PromptBuilder:
 
         Concatenates chunk summaries (or truncated text) to fit within budget.
         """
+        if not chunks:
+            return ContextResult(
+                system_prompt=self._system_prompt,
+                context_text="",
+                user_query=user_query,
+                chunks_used=0,
+                total_context_tokens=0,
+                strategy_used="summary",
+            )
+
         context_parts: list[str] = ["[Compressed Context]"]
         tokens_used = 0
 

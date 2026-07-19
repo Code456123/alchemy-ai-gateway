@@ -1,419 +1,405 @@
-# Alchemy
+<div align="center">
 
-**Adaptive Cost-Aware AI Gateway powered by Mozilla Otari**
+# 🧪 Project Alchemy
+
+### Hybrid AI Gateway & Intelligent Orchestration Middleware
+
+**An Advanced, Enterprise-Grade Cost-Aware AI Routing System**
 
 > *The right model, at the right cost, at the right time — every time.*
 
----
+[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://github.com/codespaces/new?hide_repo_select=true&ref=main&repo=raisahab8612/alchemy-ai-gateway)
+[![Python 3.11+](https://img.shields.io/badge/Python-3.11+-3776AB?style=flat-square&logo=python&logoColor=white)](https://python.org)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.100+-009688?style=flat-square&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
+[![React](https://img.shields.io/badge/React-18-61DAFB?style=flat-square&logo=react&logoColor=black)](https://react.dev)
+[![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?style=flat-square&logo=docker&logoColor=white)](docker-compose.yml)
 
-## Table of Contents
-- [What is Alchemy?](#what-is-alchemy)
-- [The Problem We Solve](#the-problem-we-solve)
-- [How Alchemy Works](#how-alchemy-works)
-- [Key Capabilities](#key-capabilities)
-- [Tech Stack](#tech-stack)
-- [Quick Start](#quick-start)
-- [Project Structure](#project-structure)
-- [Development](#development)
-- [License](#license)
+</div>
 
 ---
 
-## What is Alchemy?
+---
 
-Alchemy is an **intelligent AI gateway** that acts as a smart intermediary between end users and multiple Large Language Models (LLMs). Think of it as a traffic controller and cost optimizer for AI requests.
+
+## 📸 Production UI & CLI Interface Observability
+
+Here is the full system walkthrough executing the 9-stage latency routing layer and real-time diagnostic dashboard analytics:
+
+<p align="center">
+  <img src="cli-1.png" width="45%" alt="CLI Terminal View 1" />
+  <img src="cli-2.png" width="45%" alt="CLI Terminal View 2" />
+</p>
+<p align="center">
+  <img src="cli-3.png" width="45%" alt="Telemetry Diagnostics" />
+  <img src="cli-4.png" width="45%" alt="Dashboard Overview" />
+</p>
+
+---
+
+
+---
+
+### 🖥️ Alchemy Gateway: Core Terminal CLI Engine Execution
+Humare application ka unique Terminal Command Line Interface (CLI) live connection aur robust error capabilities ke saath perfectly execute ho raha hai. Core pipeline architecture aur output benchmarks ko live dekhne ke liye niche diye gaye section ko open karein:
+
+
+<details>
+<summary><b>▶️ Click Here to Watch Live Terminal CLI Session Demo</b></summary>
+<br>
+
+> 🖥️ **[https://1drv.ms/v/c/14dfad07dc5c194e/IQCydZt_sIuoTpdcGnsPWXDNAcAYmPmPgZRDxmnxLDn91T8?e=DD4pG3]**
+> *(Click the link above to view the high-throughput Terminal CLI handshake, exception catching framework, and live telemetry log performance in real-time).*
+
+</details>
+
+---
+
+
+
+
+
+
+
+
+
+## 📋 Table of Contents
+
+- [What is Alchemy?](#-what-is-alchemy)
+- [The Problem We Solve](#️-the-problem-we-solve)
+- [Key Capabilities & Resilience](#-key-capabilities--resilience)
+- [Tech Stack & File Mapping](#️-tech-stack--file-mapping)
+- [Unified 9-Stage Execution Pipeline](#-unified-9-stage-execution-pipeline)
+- [Project Directory Architecture](#-project-directory-architecture)
+- [Infrastructure & Containerization](#-infrastructure--containerization)
+- [Development & Verification](#️-development--verification)
+
+---
+
+## 💡 What is Alchemy?
+
+Alchemy is an **intelligent AI gateway** that acts as a smart intermediary between end users and multiple Large Language Models (LLMs). Think of it as a **network traffic controller and cost optimizer** for AI requests.
 
 Instead of directly sending queries to expensive AI models, Alchemy intercepts every request and performs intelligent preprocessing, analysis, routing, and optimization. It makes smart decisions about:
-- **Which model** should handle this request (cheap or expensive?)
-- **How to structure** the prompt for better results
-- **Whether it's even necessary** to call an expensive model
-- **Can this be answered from cache** to avoid redundant API calls?
-- **Is this request safe** or does it contain injection attempts?
 
-The result? **Significantly reduced costs** (sometimes 50-80% savings), **faster response times**, and **better observability** into your AI spending.
+- 🤔 **Which model** should handle this request — cheap local compute vs. cloud intelligence?
+- 🧱 **How to structure** the prompt for better, more reliable results
+- ⚡ **Whether it's even necessary** to call an expensive model at all
+- 📦 **Can this be answered from cache** — avoiding redundant API bills entirely?
+- 🔒 **Is this request safe** — or does it contain injection attempts?
+
+The result? **Significantly reduced costs** (50–80% savings), **faster response times**, and **complete observability** into your AI spending.
 
 ---
 
-## The Problem We Solve
+## ⚖️ The Problem We Solve
 
 ### Traditional AI Usage ❌
 
 ```
-User Query → OpenAI GPT-4 → Response
-Every query costs ~$0.03 - $0.10 (4K/8K tokens)
+User Query ──► Raw Cloud Endpoint ──► Response
+              Every query costs ~$0.03–$0.10 (4K–8K tokens)
 ```
 
-**Problems:**
-- Every request goes to the same expensive model
-- No caching of similar queries (duplicate API calls)
-- No detection of simple queries that don't need advanced models
-- Security vulnerabilities go undetected
-- No budget visibility or cost control
-- Wasted money on trivial requests
+| Problem | Impact |
+|---|---|
+| Every request hits the same expensive model | Costs scale linearly with usage |
+| No caching of similar queries | Duplicate API bills for repeat questions |
+| Security vulnerabilities go undetected | Prompt injections reach production models |
+| Zero budget visibility | No idea where money is going |
 
 ### With Alchemy ✅
 
 ```
-User Query → Alchemy Gateway → Analysis & Decision Making
-                                  ↓
-                    Is it safe? Is it cached? Is it simple?
-                                  ↓
-Route to: Cached Answer / Local Model / Cheap API / Premium API
-                                  ↓
-                            Optimized Response
+User Query ──► Alchemy Gateway ──► Analysis & Decision Engine
+                                            │
+                              ┌─────────────┴─────────────┐
+                              │  Safe? Cached? Simple?     │
+                              └─────────────┬─────────────┘
+                                            │
+               ┌────────────────────────────┼──────────────────────────┐
+               ▼                            ▼                          ▼
+        Cached Answer              Local LLM (Free)          Premium Cloud API
+         (<15ms, $0)             llama3.2:1b via Ollama    NVIDIA NIM / llama-3.3-70b
 ```
-
-**Benefits:**
-- **Cost Optimization**: Simple queries to cheap models, complex ones to premium models
-- **Speed**: Cached answers are instant
-- **Security**: Block malicious requests before they reach your APIs
-- **Visibility**: Track every token spent, understand cost drivers
-- **Intelligence**: Learn what works best for your use cases
 
 ---
 
-## How Alchemy Works
 
-### 1. **Request Interception & Analysis**
-Every incoming query is analyzed for:
-- Complexity level (simple FAQ vs. complex reasoning task)
-- Required capabilities (does it need coding? reasoning? multimodal?)
-- Security risk (prompt injection, jailbreak attempts, data leakage)
-- Budget impact (how much will this cost?)
 
-### 2. **Intelligent Routing Decision**
-Based on the analysis, Alchemy decides:
-```
-Simple Query (FAQ, lookup) → Local Gemma 2B (Free, instant)
-              ↓
-Medium Query (analysis) → Cheap API (Claude 3 Haiku, ~$0.003)
-              ↓
-Complex Query (research, coding) → Premium API (GPT-4, ~$0.03)
-              ↓
-Repeated Query → Cached Result (Free, <1ms)
-```
 
-### 3. **Prompt Optimization**
-- Rewrite prompts for clarity and conciseness when beneficial
-- Add structured formatting for better outputs
-- Optimize for target model's strengths
-- Inject relevant context from cache when appropriate
 
-### 4. **Caching Layer**
-- Uses semantic embeddings (sentence-transformers) to find similar past queries
-- FAISS vector search for fast similarity matching
-- Confidence-based cache serving (high similarity = safe to return)
-- Dramatically reduces redundant API calls
 
-### 5. **Cost Tracking & Enforcement**
-- Real-time token counting per model, per user, per team
-- Budget alerts and enforcement
-- Spending analytics and trends
-- Cost breakdowns by model, feature, user
+## 🚀 Key Capabilities & Resilience
 
-### 6. **Learning & Optimization**
-- Tracks which routing decisions resulted in good outcomes
-- Learns which model performs best for different query types
-- Continuous improvement based on analytics
-- Optional A/B testing capabilities
-
----
-
-## Key Capabilities
-
-### 🚀 Fast Request Detection
-Identify trivial queries instantly without expensive LLM calls.
-- **Example**: "What's the capital of France?" → Routed to local model or cache
-- **Savings**: Avoid $0.03+ per query on simple facts
+### ⚡ Fast Request Detection
+Identifies basic greetings and trivial commands instantly under **<15ms**, saving precious token costs. Short-circuit trivial input without ever touching an LLM API.
 
 ### 🔒 Security Screening
-Multi-layer security before requests reach your APIs.
-- **Detects**: Prompt injection attempts, jailbreaks, credential leakage patterns
-- **Blocks**: Malicious requests before they consume tokens/budget
-- **Logs**: All blocked attempts for audit and improvement
+Multi-layer inspection before queries reach downstream models. Blocks **prompt injections**, jailbreak patterns, and credential leakage attempts before they consume budget.
 
-### 🧠 Adaptive Prompt Structuring
-Improve prompt clarity and effectiveness when beneficial.
-- **Adds structure**: Format prompts for JSON, code, or structured output
-- **Context injection**: Adds relevant past context or guidelines
-- **Model-specific optimization**: Tailors prompts for target model's strengths
-
-### 📊 Task Analysis & Classification
-Understand what each query really needs.
-- **Complexity scoring**: 1-10 scale (simple fact lookup to novel reasoning)
-- **Capability mapping**: Identifies if query needs coding, multimodal, RAG, etc.
-- **Workload type**: FAQ vs. creative vs. analytical vs. coding
+### 🧠 Semantic Caching
+Probes local SQLite data using **text embeddings** (`all-MiniLM-L6-v2`) to match and serve repetitive queries for free. Hit rate of 20–40% on typical workloads.
 
 ### 💰 Budget Management
-Real-time cost tracking and enforcement.
-- **Per-query estimates**: Know cost before sending to API
-- **Budget limits**: Hard caps on spending per hour/day/month
-- **Alerts**: Notify when approaching budget thresholds
-- **Analytics**: See where every token/dollar is spent
+Tracks strict financial limits with **dynamic per-query cost assessment**. Configurable warning and critical thresholds trigger automatic model downgrade in Economic Mode.
 
-### 📚 Semantic Caching
-Avoid redundant API calls using intelligent similarity matching.
-- **Embedding-based**: Finds semantically similar past queries
-- **Configurable confidence**: Only serve cache above confidence threshold
-- **Savings**: Often 20-40% of requests hit cache on typical usage
+### 🎛️ Adaptive Task Analysis
+Generates a **complexity score (0.0–1.0)** using localized embedding vectors, then classifies each query by task type (`CODING | QA | REASONING | GENERAL`) to drive optimal routing decisions.
 
-### 📋 Explainable Routing
-Every decision is transparent and auditable.
-- **Decision logs**: Why was this query routed to this model?
-- **Scoring breakdown**: See the analysis that led to the decision
-- **Audit trail**: Complete history for compliance and debugging
-
-### 🧵 Context Management
-Smart conversation history optimization.
-- **Budget-aware summarization**: Compress old context when approaching limits
-- **Selective history**: Only include relevant past messages
-- **Token optimization**: Reduce context costs without losing information
-
-### 📈 Learning Layer
-Continuous optimization based on real usage.
-- **Outcome tracking**: Which routing decisions led to good results?
-- **Model performance**: Track which model works best for your use cases
-- **Cost analysis**: Identify high-cost, low-value queries
-- **Trend detection**: Spot emerging patterns in your usage
+### 🎤 Hardware Decoupling (Voice Layer)
+The system **isolates audio interface abstractions** (`sounddevice`/`numpy`). Upon microphone driver failure at any point — startup, runtime, or mid-session — the application instantly falls back to the interactive text CLI interface **without any lifecycle crash or session loss**.
 
 ---
 
-## Tech Stack
+## 🛠️ Tech Stack & File Mapping
 
-| Component | Technology | Purpose |
+### 🧠 Core Backend Subsystems
+
+| Component / Tech | File / Module Path | Operational Use |
 |---|---|---|
-| **Runtime** | Python 3.12 | Core implementation language |
-| **API Framework** | FastAPI | High-performance REST API server |
-| **CLI** | Typer + Rich | Beautiful command-line interface |
-| **Local LLM** | Gemma 2B via Ollama | Free, instant responses for simple queries |
-| **AI Gateway** | Mozilla Otari | Standardized API gateway interface |
-| **Embeddings** | sentence-transformers | Convert queries to semantic vectors for caching |
-| **Vector Search** | FAISS | Fast similarity search for cache hits |
-| **Database** | SQLite | Persistent storage of routing decisions, analytics |
-| **Voice STT** | Smallest.ai | Voice input support for CLI |
-| **Validation** | Pydantic v2 | Type-safe request/response validation |
-| **Logging** | Loguru | Structured, colorful logging |
-| **Package Manager** | uv | Fast Python package management |
+| **Python 3.11+** | Entire workspace | Core architectural programming runtime |
+| **FastAPI** | `backend/app/api/` | Exposes REST query streams (`/api/query`, `/api/metrics`) |
+| **Pydantic v2** | `backend/app/models/` | Enforces data validation and strict `.env` configuration |
+| **SQLite** | `data/alchemy.db` | Stores query logs and local semantic cache data |
+| **Sentence-Transformers** | `backend/app/context/` | Runs `all-MiniLM-L6-v2` locally for semantic vectorization |
+| **Loguru** | Throughout backend | Structured, clean pipeline diagnostic logging |
+
+### 🌐 Hybrid AI / LLM Layer
+
+| Provider / Driver | File / Client Path | Operational Use |
+|---|---|---|
+| **Ollama** | `backend/app/gateway/ollama_client.py` | Core driver for local offline LLM execution (`localhost:11434`) |
+| **llama3.2:1b** | via Ollama client | Free local model for low-complexity queries |
+| **NVIDIA NIM API** | `backend/app/gateway/nvidia_client.py` | Secure cloud endpoint for premium inference (`meta/llama-3.3-70b-instruct`) |
+| **PremiumSimulator** | `backend/app/gateway/premium_simulator.py` | Keyword-matched fallback when NIM API key is absent |
+| **MockResponseEngine** | `backend/app/gateway/mock.py` | Absolute failover layer when local Ollama is offline |
+
+### 📺 Frontend Interfaces
+
+| Interface Engine | File / UI Path | Operational Use |
+|---|---|---|
+| **React 18 & Vite** | `alchemy-dashboard/` | Lightning-fast web dashboard UI |
+| **Tailwind CSS** | `tailwind.config.js` | Responsive styling for real-time telemetry metrics |
+| **Typer & Rich** | `frontend/cli/` | Terminal CLI with neon diagnostics and live panels |
 
 ---
 
-## Quick Start
+## 🔄 Unified 9-Stage Execution Pipeline
 
-### Prerequisites
-- Python 3.12+
-- Git
-- `uv` package manager (or `pip`)
+When an instruction reaches the core routing architecture, it flows sequentially through a granular multi-stage transaction framework:
 
-### Installation
-
-```bash
-# Clone the repository
-git clone <repository-url>
-cd Alchemy
-
-# Create virtual environment
-uv venv
-source .venv/bin/activate  # Linux/macOS
-.venv\Scripts\activate      # Windows
-
-# Install dependencies
-make install-dev
-
-# Copy environment config
-cp .env.example .env
-# Edit .env with your API keys:
-#   - OPENAI_API_KEY
-#   - CLAUDE_API_KEY (optional)
-#   - Other model API keys
-
-# Install pre-commit hooks (for code quality)
-make hooks
-
-# Run the CLI
-make run-cli
-
-# Start the backend server
-make run-backend
+```
+Incoming Query
+      │
+      ▼
+┌─────────────────┐
+│  Stage 1        │  Fast Detector      <15ms short-circuit for trivial inputs
+│  Stage 2        │  Security Scanner   Injection / jailbreak / malicious content check
+│  Stage 3        │  Task Analyzer      Complexity score (0.0–1.0) + task_type classification
+│  Stage 4        │  Decision Engine    Central router — local vs. cloud selection
+│  Stage 5        │  Budget Manager     Financial limit tracking and economic mode enforcement
+│  Stage 6        │  Semantic Cache     SQLite embedding lookup — free instant reply
+│  Stage 7        │  Context Manager    Conversation history + vector retrieval injection
+│  Stage 8        │  Response Gen       Live call → Ollama (local) or NVIDIA NIM (cloud)
+│  Stage 9        │  Cache Store        Persist new response to SQLite for future hits
+└─────────────────┘
+      │
+      ▼
+ PromptResponse → REST API + React Dashboard + CLI Terminal
 ```
 
-### Your First Query
+| Stage | Subsystem Module | Functional Core |
+|:---:|---|---|
+| **1** | Fast Detector | Short-circuits basic inputs in <15ms, freezing wasteful LLM API tokens |
+| **2** | Security Scanner | Evaluates prompts for injections, malicious instructions, and systemic compromises |
+| **3** | Task Analyzer | Generates a complexity score (0.0–1.0) via localized embedding vectors |
+| **4** | Decision Engine | Selects optimal execution path: local compute vs. premium cloud |
+| **5** | Budget Manager | Tracks financial limits, dynamically assessing concurrent query costs |
+| **6** | Semantic Cache | Probes SQLite indices using semantic constraints — free instant replication |
+| **7** | Context Manager | Structures chronological window tokens for downstream inference |
+| **8** | Response Generation | Pulls responses from local Ollama or NVIDIA NIM cloud client |
+| **9** | Cache Store | Updates indices with new pairs to enable predictive speed enhancements |
 
-**Via CLI:**
-```bash
-python -m frontend.cli "What's the capital of France?"
-# Alchemy analyzes, routes to local model, returns instantly
-```
-
-**Via REST API:**
-```bash
-curl -X POST http://localhost:8000/query \
-  -H "Content-Type: application/json" \
-  -d '{"query": "Explain quantum computing"}'
-```
+> Each stage is executed by [`stage_executor.py`](backend/app/pipeline/stage_executor.py) which wraps every handler in **automatic retry logic**, **per-stage latency tracking**, and **disk checkpointing** — enabling full pipeline resumption on failure.
 
 ---
 
-## Project Structure
+## 📂 Project Directory Architecture
 
 ```
 Alchemy/
-├── backend/          # Core gateway engine & API server
-│   ├── app/          # Application source code
-│   │   ├── models.py       # Data models & schemas
-│   │   ├── router.py       # Routing logic (which model to use?)
-│   │   ├── cache.py        # Semantic caching layer
-│   │   ├── security.py     # Security screening
-│   │   ├── analytics.py    # Cost tracking & analytics
-│   │   └── api.py          # FastAPI route definitions
-│   ├── tests/        # Unit & integration tests
-│   ├── scripts/      # Utility scripts (setup, migration, etc.)
-│   └── docs/         # Backend architecture documentation
+├── backend/                        # Core gateway engine & API server
+│   └── app/
+│       ├── api/                    # FastAPI routes (__init__.py, server.py)
+│       ├── budget/                 # BudgetManager — spending limits & economic mode
+│       ├── constants/              # System enums and base model values
+│       ├── context/                # Semantic memory, chunking & relevance filters
+│       │   ├── chunking/           # Text chunker utilities
+│       │   ├── memory/             # Unified cross-session memory service
+│       │   └── retrieval/          # Relevance filter pipelines
+│       ├── db/                     # SQLite connectivity layer
+│       ├── gateway/                # LLM clients
+│       │   ├── nvidia_client.py    # NVIDIA NIM cloud inference (zero mock fallback)
+│       │   ├── ollama_client.py    # Local llama3.2:1b driver
+│       │   ├── premium_simulator.py# Keyword fallback (NIM key absent)
+│       │   └── mock.py             # Final failsafe (Ollama offline)
+│       ├── models/                 # Pydantic schemas (request, response, cache)
+│       ├── pipeline/               # Orchestrator, checkpoint manager, retry loops
+│       │   ├── orchestrator.py     # 9-stage pipeline coordinator
+│       │   ├── stage_executor.py   # Per-stage retry + checkpoint wrapper
+│       │   ├── checkpoint_manager.py
+│       │   └── event_dispatcher.py
+│       ├── routing/                # Decision engine (model selection logic)
+│       ├── security/               # Injection scanner
+│       └── voice/                  # Audio interface abstraction layer
 │
-├── frontend/         # CLI & user interfaces
-│   ├── cli/          # Typer command definitions
-│   ├── ui/           # Rich UI components (tables, panels, etc.)
-│   ├── animations/   # Routing visualization animations
-│   ├── voice/        # Smallest.ai STT integration
-│   ├── dashboard/    # Budget & analytics dashboard
-│   └── themes/       # CLI color themes & styling
+├── frontend/                       # CLI interface layer
+│   └── cli/
+│       ├── app.py                  # Typer CLI entry point (chat, budget, version)
+│       └── session.py              # Interactive session loop + voice fallback
 │
-├── docs/             # Full project documentation
-│   ├── ARCHITECTURE.md      # System design & flow diagrams
-│   ├── API.md               # REST API reference
-│   ├── DEPLOYMENT.md        # Production setup guide
-│   └── USAGE.md             # Detailed usage examples
+├── alchemy-dashboard/              # React 18 web dashboard
+│   ├── src/
+│   │   └── AlchemyDashboard.jsx    # Live telemetry metrics + query interface
+│   ├── vite.config.js
+│   └── package.json
 │
-├── pyproject.toml    # Python project configuration & dependencies
-├── Makefile          # Development shortcuts
-├── docker-compose.yml # Local dev environment with all services
-├── .env.example      # Template for environment variables
-└── README.md         # This file
+├── data/                           # Persistent SQLite storage
+│   └── alchemy.db                  # Query logs + semantic cache
+│
+├── docker-compose.yml              # Production microservices layout
+├── .env.example                    # Public configuration template
+├── pyproject.toml                  # Python project config & dependencies
+├── Makefile                        # Development shortcuts
+└── README.md                       # This file
 ```
 
 ---
 
-## Development
+## 🐳 Infrastructure & Containerization
+
+The system deploys zero-dependency production clusters using [`docker-compose.yml`](docker-compose.yml), splitting into **two discrete microservices**:
+
+```yaml
+services:
+  alchemy-backend    # Port 8000 — FastAPI application cluster
+  alchemy-ollama     # Port 11434 — Standalone local LLM engine
+```
+
+| Service | Port | Role |
+|---|---|---|
+| `alchemy-backend` | `8000:8000` | Isolated FastAPI cluster. Mounts `backend/` live, injects `.env` keys |
+| `alchemy-ollama` | `11434:11434` | Local Ollama LLM server with persistent model storage via volume |
+
+**Strict dependency chain:** `depends_on: ollama` blocks FastAPI initialization until the local LLM microservice is fully live on network sockets.
+
+```bash
+# One-command production launch
+docker compose up
+
+# Dashboard → http://localhost:5173
+# API       → http://localhost:8000
+# API Docs  → http://localhost:8000/docs
+```
+
+---
+
+## 🛠️ Development & Verification
+
+### Quick Start — Local Development
+
+```bash
+# 1. Clone and enter the project
+git clone https://github.com/raisahab8612/alchemy-ai-gateway.git
+cd alchemy-ai-gateway
+
+# 2. Create virtual environment
+uv venv
+.venv\Scripts\activate        # Windows
+source .venv/bin/activate     # Linux / macOS
+
+# 3. Install dependencies
+make install-dev
+
+# 4. Configure environment
+cp .env.example .env
+# Add your NVIDIA_NIM_API_KEY to .env for premium routes
+
+# 5. Start Ollama (local LLM)
+ollama pull llama3.2:1b
+
+# 6. Launch backend
+uvicorn backend.app.api:app --reload --port 8000
+
+# 7. Launch React dashboard
+cd alchemy-dashboard && npm run dev
+```
+
+### Running the CLI Interface
+
+```bash
+# Full interactive terminal session with neon diagnostics
+python -m frontend.cli.app
+
+# Start in voice input mode
+python -m frontend.cli.app chat --voice
+
+# Force a specific model
+python -m frontend.cli.app chat --model gpt4o
+
+# View budget dashboard
+python -m frontend.cli.app budget
+```
+
+### Running the Quality Assurance Suite
+
+```bash
+# Full structural backend validation
+pytest backend/tests/
+
+# With coverage report
+pytest backend/tests/ --cov=backend --cov-report=html
+
+# Single module test
+pytest backend/tests/test_pipeline.py -v
+```
 
 ### Code Quality
 
 ```bash
-# Format code (black + ruff)
-make format
-
-# Lint code (ruff)
-make lint
-
-# Type check (mypy)
-make typecheck
-
-# Run all tests
-make test
-
-# Run all quality checks at once
-make check
+make format      # black + ruff formatting
+make lint        # ruff linting
+make typecheck   # mypy type checking
+make check       # all quality checks at once
 ```
 
-### Running Tests
+---
+
+## ☁️ Live Interactive Cloud Sandbox
+
+Experience the high-fidelity interactive terminal interface instantly in your browser — no local runtime configuration needed:
+
+[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://github.com/codespaces/new?hide_repo_select=true&ref=main&repo=raisahab8612/alchemy-ai-gateway)
+
+Once the container initializes, launch the structural layer:
 
 ```bash
-# Run all tests with coverage
-make test
-
-# Run specific test file
-pytest backend/tests/test_router.py -v
-
-# Run tests matching a pattern
-pytest -k "test_cache" -v
-```
-
-### Local Development with Docker
-
-```bash
-# Start all services (API, Ollama, vector DB)
-docker-compose up
-
-# Access API at http://localhost:8000
-# View API docs at http://localhost:8000/docs
+python -m frontend.cli.app
 ```
 
 ---
 
-## How to Use Alchemy
-
-### Example 1: Cost-Aware Chat
-```python
-from backend.app.router import Router
-
-router = Router()
-
-# Alchemy automatically decides which model to use
-response = router.route_query(
-    query="Explain machine learning to a 5-year-old",
-    user_id="user123",
-    budget_limit=0.50  # Max $0.50 for this query
-)
-
-print(response.model_used)  # "Claude 3 Haiku" ($0.001)
-print(response.cost)        # 0.0015
-print(response.cached)      # True/False
-```
-
-### Example 2: Monitoring Costs
-```python
-from backend.app.analytics import Analytics
-
-analytics = Analytics()
-
-# Get daily spending breakdown
-daily_report = analytics.get_daily_report()
-print(f"Today's spend: ${daily_report.total_cost}")
-print(f"Queries: {daily_report.total_queries}")
-print(f"Cache hit rate: {daily_report.cache_hit_rate}%")
-```
-
-### Example 3: CLI Usage
-```bash
-# Simple query (routed intelligently)
-alchemy "What's 2+2?"
-
-# With budget limit
-alchemy --budget 0.10 "Write a 500-word essay on AI ethics"
-
-# Interactive mode
-alchemy --interactive
-
-# View dashboard
-alchemy dashboard
-```
-
----
-
-## Future Roadmap
-
-- 🔄 Multi-model load balancing with latency optimization
-- 🌍 Multi-language support with automatic translation
-- 🎯 Fine-tuning integration for custom model adaptation
-- 📱 Mobile app for on-the-go AI access
-- 🔌 Webhooks and streaming responses
-- 🤝 Team/organization features with usage sharing
-
----
-
-## Contributing
-
-We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
-
----
-
-## License
+## 📄 License
 
 MIT License — see [LICENSE](LICENSE) for details.
 
 ---
 
-## Support & Documentation
+<div align="center">
 
-- 📖 **Full Documentation**: See `/docs` folder
-- 🐛 **Issues**: Found a bug? [Open an issue](../../issues)
-- 💬 **Discussions**: Have ideas? [Start a discussion](../../discussions)
-- 📧 **Email**: [support information to be added]
+**Built with precision. Routed with intelligence. Costs optimized by design.**
+
+*Alchemy — where every AI token counts.*
+
+</div>

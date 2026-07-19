@@ -28,6 +28,7 @@ from backend.app.context.memory.vector_store_adapter import (
     VectorStoreAdapter,
     create_vector_adapter,
 )
+from backend.app.constants.enums import TaskType
 from backend.app.context.models import (
     ChunkType,
     ContextResult,
@@ -88,6 +89,7 @@ class ContextManager:
         user_query: str,
         budget: BudgetSnapshot | None = None,
         top_k: int = 10,
+        task_type: TaskType | None = None,
     ) -> ContextResult:
         """Prepare optimized context for an LLM call.
 
@@ -129,19 +131,37 @@ class ContextManager:
             candidates,
             max_chunks=max_chunks,
             current_session_id=self._session_id,
+            task_type=task_type,
         )
+
+        selected_chunks = [
+            r for r in ranked if r.similarity_score >= 0.75
+        ]
+
+        if selected_chunks:
+            for ranked_chunk in selected_chunks:
+                preview = ranked_chunk.chunk.text.replace("\n", " ")[:80]
+                logger.debug(
+                    "Selected context chunk: similarity={:.3f}, preview='{}'",
+                    ranked_chunk.similarity_score,
+                    preview,
+                )
+        else:
+            logger.debug(
+                "No context chunks selected: all candidates below similarity threshold 0.75"
+            )
 
         strategy = self._budget_strategy(budget)
         if strategy == "compressed":
             result = self._prompt_builder.build_compressed(
                 user_query,
-                [r.chunk for r in ranked],
+                [r.chunk for r in selected_chunks],
                 max_tokens=self._settings.context_summary_max_tokens,
             )
         else:
             result = self._prompt_builder.build(
                 user_query,
-                ranked_chunks=ranked,
+                ranked_chunks=selected_chunks,
                 session_summary=self._session_manager.previous_summary,
             )
 

@@ -9,8 +9,10 @@ from backend.app.pricing.adapters.deepseek_adapter import DeepSeekAdapter
 from backend.app.pricing.adapters.gemini_adapter import GeminiAdapter
 from backend.app.pricing.adapters.gemma_adapter import GemmaAdapter
 from backend.app.pricing.adapters.grok_adapter import GrokAdapter
+from backend.app.pricing.adapters.mock_adapter import MockAdapter
 from backend.app.pricing.adapters.ollama_adapter import OllamaAdapter
 from backend.app.pricing.adapters.openai_adapter import OpenAIAdapter
+from backend.app.pricing.adapters.otari_adapter import OtariAdapter
 from backend.app.pricing.adapters.perplexity_adapter import PerplexityAdapter
 from backend.app.pricing.adapters.qwen_adapter import QwenAdapter
 
@@ -21,14 +23,18 @@ class ProviderRegistry:
     def __init__(self) -> None:
         self.adapters: dict[str, object] = {
             "openai": OpenAIAdapter(),
+            "nvidia": OpenAIAdapter(),
             "anthropic": AnthropicAdapter(),
             "gemini": GeminiAdapter(),
             "grok": GrokAdapter(),
+            "groq": GrokAdapter(),
             "qwen": QwenAdapter(),
             "gemma": GemmaAdapter(),
             "perplexity": PerplexityAdapter(),
             "deepseek": DeepSeekAdapter(),
             "ollama": OllamaAdapter(),
+            "otari": OtariAdapter(),
+            "mock": MockAdapter(),
         }
 
     def get_adapter(self, provider: str) -> object:

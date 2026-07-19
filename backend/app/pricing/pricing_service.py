@@ -2,6 +2,10 @@
 
 from __future__ import annotations
 
+from __future__ import annotations
+
+import asyncio
+
 from loguru import logger
 
 from backend.app.pricing.pricing_cache import PricingCache
@@ -19,7 +23,7 @@ class PricingService:
         self.registry = provider_registry or ProviderRegistry()
         self.cache = pricing_cache or PricingCache()
 
-    async def calculate_cost(
+    def calculate_cost(
         self,
         provider: str,
         model: str,
@@ -37,12 +41,6 @@ class PricingService:
 
         Returns:
             Cost in USD (float). Returns 0.0 if pricing unavailable.
-
-        Flow:
-        1. Get adapter from registry
-        2. Attempt to get pricing (live or cached)
-        3. Calculate: (prompt / 1000 * input_price) + (completion / 1000 * output_price)
-        4. Never crash - log warning and return 0.0 if unavailable
         """
         try:
             adapter = self.registry.get_adapter(provider)
@@ -50,7 +48,7 @@ class PricingService:
             logger.warning("Unknown provider '{}'. Cost = $0", provider)
             return 0.0
 
-        pricing = await self._get_pricing(adapter, provider, model)
+        pricing = self._get_pricing(adapter, provider, model)
         if pricing is None:
             logger.warning("Pricing unavailable for {}:{}", provider, model)
             return 0.0
@@ -72,10 +70,10 @@ class PricingService:
         )
         return total_cost
 
-    async def _get_pricing(self, adapter, provider: str, model: str) -> dict | None:
+    def _get_pricing(self, adapter, provider: str, model: str) -> dict | None:
         """Attempt to get pricing from adapter (live) or cache."""
         try:
-            pricing = await adapter.get_model_pricing(model)
+            pricing = asyncio.run(adapter.get_model_pricing(model))
             if pricing:
                 self.cache.set(provider, model, pricing)
                 return pricing

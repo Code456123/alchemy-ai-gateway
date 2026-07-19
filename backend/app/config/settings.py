@@ -47,9 +47,19 @@ class Settings(BaseSettings):
     # ── Ollama (Local 2B) ───────────────────────
     ollama_base_url: str = "http://localhost:11434"
     ollama_model: str = "gemma:2b"
+    ollama_timeout_ms: int = 10000
 
-    # ── Groq (Whisper STT for voice) ──────────────
+    # ── NVIDIA (OpenAI-compatible) ───────────────
+    nvidia_api_key: str = ""
+    nvidia_base_url: str = ""
+    nvidia_model: str = ""
+    nvidia_timeout_ms: int = 60000
+
+    # ── Groq (OpenAI-compatible) ────────────────
     groq_api_key: str = ""
+    groq_base_url: str = ""
+    groq_model: str = ""
+    groq_timeout_ms: int = 60000
 
     # ── Smallest.ai (Voice STT, legacy) ─────────
     smallest_ai_api_key: str = ""

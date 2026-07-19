@@ -9,6 +9,7 @@ import pytest
 from backend.app.config.settings import Settings, get_settings
 from backend.app.constants.models import ModelID
 from backend.app.gateway.mock import MockResponseEngine
+from backend.app.gateway.ollama_client import OllamaGateway
 from backend.app.gateway.otari_client import OtariGateway, create_gateway
 from backend.app.models.request import PromptRequest
 
@@ -35,6 +36,53 @@ def test_create_gateway_returns_otari_when_configured(monkeypatch: pytest.Monkey
     gateway = create_gateway()
     assert isinstance(gateway, OtariGateway)
     get_settings.cache_clear()
+
+
+def test_create_gateway_returns_ollama_when_reachable(monkeypatch: pytest.MonkeyPatch) -> None:
+    """When Ollama is available, the factory prefers OllamaGateway."""
+    get_settings.cache_clear()
+    monkeypatch.setenv("OLLAMA_BASE_URL", "http://localhost:11434")
+    monkeypatch.setenv("OLLAMA_MODEL", "llama3:latest")
+    monkeypatch.setenv("OLLAMA_TIMEOUT_MS", "5000")
+    monkeypatch.setenv("OTARI_API_KEY", "")
+    monkeypatch.setenv("OTARI_BASE_URL", "")
+    get_settings.cache_clear()
+
+    with patch("backend.app.gateway.otari_client._is_ollama_reachable", return_value=True):
+        gateway = create_gateway()
+
+    assert isinstance(gateway, OllamaGateway)
+    get_settings.cache_clear()
+
+
+def test_ollama_gateway_generate_success(monkeypatch: pytest.MonkeyPatch) -> None:
+    """OllamaGateway.generate returns a MockResult on successful API response."""
+    from backend.app.gateway.ollama_client import OllamaGateway
+
+    monkeypatch.setenv("OLLAMA_BASE_URL", "http://localhost:11434")
+    monkeypatch.setenv("OLLAMA_MODEL", "llama3:latest")
+    monkeypatch.setenv("OLLAMA_TIMEOUT_MS", "5000")
+    get_settings.cache_clear()
+    settings = get_settings()
+    gateway = OllamaGateway(settings=settings)
+
+    prompt_request = PromptRequest(prompt="What is recursion?")
+    api_payload = {"response": "Recursion is a function calling itself."}
+
+    with patch("backend.app.gateway.ollama_client.httpx.Client") as mock_client_cls:
+        mock_client = mock_client_cls.return_value.__enter__.return_value
+        mock_response = mock_client.post.return_value
+        mock_response.status_code = 200
+        mock_response.json.return_value = api_payload
+        mock_response.raise_for_status.return_value = None
+
+        result = gateway.generate(prompt_request, ModelID.LLAMA_3_1_8B)
+
+    assert result.text == "Recursion is a function calling itself."
+    assert result.model is ModelID.LLAMA_3_1_8B
+    assert result.prompt_tokens > 0
+    assert result.completion_tokens > 0
+    assert result.latency_ms > 0
 
 
 # ── OtariGateway Interface Tests ──────────────────────────

@@ -26,6 +26,14 @@ ENV/
 .env.local
 .env.*.local
 
+
+
+# Environment
+.env
+.env.*
+!.env.example
+
+
 # IDE
 .vscode/
 .idea/
@@ -74,3 +82,4 @@ logs/
 
 # Docker
 .docker/
+
