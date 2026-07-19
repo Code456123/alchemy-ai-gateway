@@ -1,0 +1,25 @@
+services:
+  - type: web
+    name: alchemy-cli
+    env: docker
+    plan: free
+    repo: "<YOUR_GIT_REPO_URL>"  # replace with your repository URL
+    branch: main
+    autoDeploy: true
+    dockerfilePath: Dockerfile
+    startCommand: ./start.sh
+    envVars:
+      - key: NVIDIA_API_KEY
+        value: ""
+      - key: GROQ_API_KEY
+        value: ""
+      - key: OLLAMA_BASE_URL
+        value: ""
+      - key: NVIDIA_MODEL
+        value: ""
+      - key: GROQ_MODEL
+        value: ""
+      - key: OTARI_API_KEY
+        value: ""
+      - key: OTARI_BASE_URL
+        value: ""
