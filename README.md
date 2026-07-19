@@ -18,7 +18,7 @@
 </div>
 
 ---
-he goal of Alchemy is not to build another chatbot. The goal is to build the intelligent decision layer that sits between users and multiple AI providers, automatically selecting the best model for every request while optimizing quality, latency, and cost.
+The goal of Alchemy is not to build another chatbot. The goal is to build the intelligent decision layer that sits between users and multiple AI providers, automatically selecting the best model for every request while optimizing quality, latency, and cost.
 ---
 
 
